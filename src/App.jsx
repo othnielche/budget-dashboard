@@ -1,5 +1,5 @@
-import {Layout} from "../src/components/layout.jsx"
-import {Dashboard} from "@/components/Dashboard.jsx"
+import {Layout} from "@/components/layout.jsx"
+import {Dashboard} from "@/screens/Dashboard.jsx"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/authContext.jsx";
 import { Login } from "./screens/login.jsx";
