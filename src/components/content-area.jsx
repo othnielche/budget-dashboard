@@ -1,6 +1,7 @@
 import { AuthContext } from '@/contexts/authContext';
 import React, {useContext} from 'react';
 import ViewRoles from './sidebar/subMenus/view-roles';
+import CreateNewUser from './sidebar/subMenus/users/create-new-user';
 ViewRoles
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
@@ -38,7 +39,7 @@ function ContentArea({ activeItem }) {
         case 'Users':
             return <div>This is Users</div>;
         case 'Create New User':
-            return <div>This is Create New User</div>;
+            return <div><CreateNewUser /></div>;
         case 'View Users':
             return <div>This is View Users</div>;
         case 'Password Reset Requests':
@@ -60,7 +61,7 @@ function ContentArea({ activeItem }) {
         case 'Create New Role':
             return <div>This is Create New Role</div>;
         case 'View Roles':
-            return <div className='h-full w-full items-center justify-center'><ViewRoles /></div>;
+            return <div className='items-center justify-center'><ViewRoles /></div>;
         default:
             return <div>Unknown item: {activeItem.title} and {user.estateCode}</div>;
     }

@@ -20,7 +20,7 @@ export function Dashboard() {
             </div>
             <div className="flex-1 flex-col pl-4 overflow-y-auto">
                 <div className='flex flex-row'>
-                    <div className='flex-1 pt-1 flex-row h-10 text-xl font-semibold self-center text-left fixed top-0'>{activeItem?.title}</div>
+                    <div className='flex-1 pt-1 flex-row h-10 text-xl font-semibold self-center text-left  top-0'>{activeItem?.title}</div>
                     {/* Make div ocupy the remainder of the available viewport height and width*/ }
                 </div>
                 <div className='h-full w-full flex-grow bg-' >
