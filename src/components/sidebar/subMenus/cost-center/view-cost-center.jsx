@@ -1,9 +1,9 @@
 import React from 'react'
 
-function ViewCostCenter() {
+function ViewAllCostCenters() {
   return (
     <div>ViewCostCenter</div>
   )
 }
 
-export default ViewCostCenter
+export default ViewAllCostCenters

@@ -3,6 +3,7 @@ import {React, useState} from 'react';
 import AppSidebar from '@/components/app-sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import ContentArea from '@/components/content-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function Dashboard() {
     const [activeItem, setActiveItem] = useState(null);
@@ -23,9 +24,11 @@ export function Dashboard() {
                     <div className='flex-1 pt-1 flex-row h-10 text-xl font-semibold self-center text-left  top-0'>{activeItem?.title}</div>
                     {/* Make div ocupy the remainder of the available viewport height and width*/ }
                 </div>
-                <div className='h-full w-full flex-grow bg-' >
-                    <ContentArea activeItem={activeItem} />
-                </div>
+                <ScrollArea>
+                    <div className='h-full w-full flex-grow bg-' >
+                        <ContentArea activeItem={activeItem} />
+                    </div>
+                </ScrollArea>
             </div>
         </div>
     )

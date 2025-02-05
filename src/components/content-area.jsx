@@ -3,6 +3,10 @@ import React, {useContext} from 'react';
 import ViewRoles from './sidebar/subMenus/view-roles';
 import CreateNewUser from './sidebar/subMenus/users/create-new-user';
 ViewRoles
+import CreateCostCenter from './sidebar/subMenus/cost-center/create-cost-center';
+import CreateCostUnit from './sidebar/subMenus/cost-unit/create-cost-unit';
+import ViewAllCostUnits from './sidebar/subMenus/cost-unit/view-all-cost-units';
+import ViewAllCostCenters from './sidebar/subMenus/cost-center/view-cost-center';
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
     if (!activeItem) return <div>No item selected</div>;
@@ -11,7 +15,7 @@ function ContentArea({ activeItem }) {
         case 'Budgets':
             return (
                 <div className='flex flex-col justify-center h-full w-full'>
-                    <div className='items-center justify-center h-full w-full'>This is the Budgets</div>
+                    <div className='items-center justify-center h-full w-full'>This is the Budget</div>
                 </div>
             )
         case 'Create New Budget':
@@ -47,15 +51,15 @@ function ContentArea({ activeItem }) {
         case 'Cost Centers':
             return <div>This is Cost Centers</div>;
         case 'Create New Cost Center':
-            return <div>This is Create New Cost Center</div>;
+            return <div><CreateCostCenter /></div>;
         case 'View Cost Centers':
-            return <div>This is View Cost Centers</div>;
+            return <div><ViewAllCostCenters /></div>;
         case 'Cost Units':
             return <div>This is Cost Unit</div>;
         case 'Create New Cost Unit':
-            return <div>This is Create New Cost Unit</div>;
+            return <div><CreateCostUnit /></div>;
         case 'View Cost Units':
-            return <div>This is View Cost Units</div>;
+            return <div><ViewAllCostUnits /></div>;
         case 'Roles':
             return <div>This is Roles</div>;
         case 'Create New Role':
