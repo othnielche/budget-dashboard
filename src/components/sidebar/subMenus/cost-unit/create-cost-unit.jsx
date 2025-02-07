@@ -2,7 +2,9 @@ import React from 'react'
 
 function CreateCostUnit() {
   return (
-    <div>CreateCostUnit</div>
+    <div>
+      
+    </div>
   )
 }
 

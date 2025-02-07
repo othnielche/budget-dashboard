@@ -186,7 +186,7 @@ const items = [
                 permission: ['manage:users'],
             }
         ]
-    }
+    }, 
 ]
 
 export default items

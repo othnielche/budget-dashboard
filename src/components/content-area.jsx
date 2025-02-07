@@ -7,6 +7,7 @@ import CreateCostCenter from './sidebar/subMenus/cost-center/create-cost-center'
 import CreateCostUnit from './sidebar/subMenus/cost-unit/create-cost-unit';
 import ViewAllCostUnits from './sidebar/subMenus/cost-unit/view-all-cost-units';
 import ViewAllCostCenters from './sidebar/subMenus/cost-center/view-cost-center';
+import ViewAllUsers from './sidebar/subMenus/users/view-all-users';
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
     if (!activeItem) return <div>No item selected</div>;
@@ -45,7 +46,7 @@ function ContentArea({ activeItem }) {
         case 'Create New User':
             return <div><CreateNewUser /></div>;
         case 'View Users':
-            return <div>This is View Users</div>;
+            return <div><ViewAllUsers /></div>;
         case 'Password Reset Requests':
             return <div>This is Password Reset Requests</div>;
         case 'Cost Centers':

@@ -53,7 +53,7 @@ function CreateNewUser() {
           <div>
               <text className='text-sm italic'>User has to update their password with one only they know *</text>
           </div>
-          <div className='mt-4'>
+          <div className='mt-4 w-1/2 text-right ml-4'>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant='outline'> Select User Role</Button>
@@ -72,12 +72,10 @@ function CreateNewUser() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className='flex ml-4 flex-row w-1/2 justify-end '>
-          <div className='flex mt-4 w-1/2 justify-end'>
+          <div className='flex mt-4 w-1'>
             <Button variant='' type='submit'>Create User</Button>
           </div>
           </div>
-        </div>
       </form>
     </div>
   )
