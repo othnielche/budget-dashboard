@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 
 
 function CreateNewUser() {
-  const [role, setRole] = useState("Select Role")
+  
 
   return (
     <div>
