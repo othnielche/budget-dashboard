@@ -47,13 +47,13 @@ function ViewAllCostCenters() {
             <TableHeader>
               <TableRow>
                 <TableHead>Cost Center ID</TableHead>
-                <TableHead className="w-[100px]">Cost Center Code</TableHead>
+                <TableHead className="font-medium`">Cost Center Code</TableHead>
                 <TableHead className='text-right'>Cost Center Name</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {costCenters.map((costCenter) => (
-                <TableRow>
+                <TableRow key={costCenter.CostCenterID}>
                   <TableCell>{costCenter.CostCenterID}</TableCell>
                   <TableCell className="font-medium">{costCenter.CostCenterCode}</TableCell>
                   <TableCell className="text-right">{costCenter.CostCenterName}</TableCell>

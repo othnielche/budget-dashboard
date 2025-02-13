@@ -296,7 +296,6 @@ const CreateCostCenter = () => {
           "Content-Type": "application/json",
         }
       });
-      setResponse(response.data.error);
 
       if (response.data.success) {
         setOpenAlertDialog(true);
@@ -304,14 +303,7 @@ const CreateCostCenter = () => {
         setAlertDialogMessage("Cost center created successfully!");
         setCostCenterCode("");
         setCostCenterName("");
-      } else {
-        console.log({
-          message: "hey",
-          error:response.data.error});
-        setOpenAlertDialog(true);
-        setAlertDialogTitle("Error!");
-        setAlertDialogMessage(`Failed to create cost center. Reason: ${response.data.error || "Try again."}`);
-      }
+      } 
     } catch (error) {
       if (error.response && error.response.data) {
         setAlertDialogTitle("Error");

@@ -8,6 +8,10 @@ import CreateCostUnit from './sidebar/subMenus/cost-unit/create-cost-unit';
 import ViewAllCostUnits from './sidebar/subMenus/cost-unit/view-all-cost-units';
 import ViewAllCostCenters from './sidebar/subMenus/cost-center/view-cost-center';
 import ViewAllUsers from './sidebar/subMenus/users/view-all-users';
+import CreateEstate from './sidebar/subMenus/estates/create-estate';
+import ViewAllEstates from './sidebar/subMenus/estates/view-all-estates';
+import ViewAllGroups from './sidebar/subMenus/groups/view-all-groups';
+import CreateGroup from './sidebar/subMenus/groups/create-group';
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
     if (!activeItem) return <div>No item selected</div>;
@@ -38,9 +42,15 @@ function ContentArea({ activeItem }) {
         case 'Groups':
             return <div>This is Groups</div>;
         case 'Create New Group':
-            return <div>This is Create New Group</div>;
+            return <div><CreateGroup /></div>;
         case 'View Groups':
-            return <div>This is View Groups</div>;
+            return <div><ViewAllGroups /></div>;
+        case 'Estates':
+            return <div>This is Estates</div>;
+        case 'Create New Estate':
+            return <div><CreateEstate /></div>;
+        case 'View Estates':
+            return <div><ViewAllEstates /></div>;
         case 'Users':
             return <div>This is Users</div>;
         case 'Create New User':
