@@ -5,6 +5,19 @@ import { AuthContext } from '@/contexts/authContext'
 import API from '@/lib/axios'
 import React, { useContext, useState } from 'react'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+
 function CreateGroup() {
   const { user } = useContext(AuthContext);
   const [GroupCode, setGroupCode] = useState("");
@@ -51,8 +64,14 @@ function CreateGroup() {
       setOpen(false);
     }
   };
-  
 
+  const handleCancel = () => {
+    setOpen(false)
+  }
+
+  const handleAlertDialogClose = () => {
+    setOpenAlertDialog(false);
+  }
   return (
     <div>
       <form>
@@ -65,7 +84,7 @@ function CreateGroup() {
                   type='text'
                   placeholder='group code'
                   value={GroupCode}
-                  onChange={(e) => setCostCenterCode(e.target.value)}
+                  onChange={(e) => setGroupCode(e.target.value)}
                   required
                 />
               </div>
@@ -75,7 +94,7 @@ function CreateGroup() {
                   id='GroupName'
                   type='text'
                   value={GroupName}
-                  onChange={(e) => setCostCenterName(e.target.value)}
+                  onChange={(e) => setGroupName(e.target.value)}
                   placeholder='group name'
                   required
                 />
@@ -86,17 +105,47 @@ function CreateGroup() {
                   id='GroupSymbol'
                   type='text'
                   value={GroupSymbol}
-                  onChange={(e) => setCostCenterName(e.target.value)}
+                  onChange={(e) => setGroupSymbol(e.target.value)}
                   placeholder='group symbol'
                   required
                 />
               </div>
             </div>
             <div className='mt-4 w-1/2'>
-              <Button type="submit" >Create Cost Center</Button>
+              <Button type="submit" onClick={handleCreateGroup} >Create Group</Button>
             </div>
           </div>
       </form>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogTrigger asChild>
+          <span></span>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Group Creation</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription>
+            Are you sure you want to create a new group with code {GroupCode}, name {GroupName} and symbol {GroupSymbol}?
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={openAlertDialog} onOpenChange={handleAlertDialogClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertDialogTitle}</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription>
+            {alertDialogMessage}
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleAlertDialogClose}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -29,6 +29,7 @@ function ViewAllCostCenters() {
         const data = response.data;
         localStorage.setItem('costCenters', data)
         setCostCenters(data);
+        console.log(data);
       } catch (error) {
         console.error(error);
       }
