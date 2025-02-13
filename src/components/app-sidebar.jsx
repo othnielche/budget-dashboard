@@ -15,15 +15,16 @@ import {
     SidebarGroupContent,
 } from "@/components/ui/sidebar"
 
-import { Calendar, Home, Inbox, Search, Settings, BookCheck, Users, HandCoins, Group } from "lucide-react"
 import { AuthContext } from '@/contexts/authContext'
 import ROLES from '@/lib/role'
 import items from '@/lib/items'
+import { NavUser } from './nav-user'
 
 
 const user1 = {
-    name: "Othniel",
+    name: "Othniel Che",
     role: "Administrator",
+    matricule: "240037"
 }
 
 export function AppSidebar({ onItemClick }) {
@@ -87,7 +88,8 @@ export function AppSidebar({ onItemClick }) {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-9o        </SidebarFooter>
+          <NavUser user={user1} />
+        </SidebarFooter>
       </Sidebar>
     </div>
   ) 
