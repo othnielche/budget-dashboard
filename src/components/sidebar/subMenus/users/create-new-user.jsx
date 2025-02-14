@@ -56,7 +56,7 @@ function CreateNewUser() {
           <div className='mt-4 w-1/2 text-right ml-4'>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant='outline'> Select User Role</Button>
+                <Button variant='outline'>Select User Role</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel>Select User Role</DropdownMenuLabel>
