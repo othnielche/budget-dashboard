@@ -20,11 +20,11 @@ export function Dashboard() {
                         <SidebarTrigger></SidebarTrigger>
                 </SidebarProvider>
             </div>
-            <div className="flex-1 flex-col pl-4 overflow-y-auto">
+            <div className="flex-1 flex-col pl-4 pr-8 overflow-y-auto">
                 <header >
                     <div className='flex flex-row'>
                         <div className='flex-1 pt-1 flex-row h-10 text-xl font-semibold self-center text-left  top-0'>{activeItem?.title}</div>
-                        {/* Make div ocupy the remainder of the available viewport height and width*/ }
+                        
                     </div>
                 </header>
                 <ScrollArea>

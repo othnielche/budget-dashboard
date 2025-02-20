@@ -186,7 +186,56 @@ const items = [
                 permission: ['manage:users'],
             }
         ]
-    }, 
+    },
+    {
+        title: "Settings",
+        url: "#",
+        icon: Settings,
+        permission: ['manage:settings'],
+        items: [
+            {
+                title: "View Settings",
+                url: "#",
+                permission: ['manage:settings'],
+            }
+        ]   
+    },
+    {
+        title: "Items",
+        url: "#",
+        icon: BookCheck,
+        permission: ['manage:settings'],
+        items: [
+            {
+                title: "Create New Item",
+                url: "#",
+                permission: ['manage:settings'],
+            }, 
+            {
+                title: "View Items",
+                url: "#",
+                permission: ['manage:settings'],
+            }
+        ]
+    },
+    {
+        title: "Measuring Units",
+        url: "#",
+        icon: Settings,
+        permission: ['manage:settings'],
+        items: [
+            {
+                title: "Create New Measuring Unit",
+                url: "#",
+                permission: ['manage:settings'],
+            }, 
+            {
+                title: "View Measuring Units",
+                url: "#",
+                permission: ['manage:settings'],
+            }
+        ]
+    }
 ]
 
 export default items

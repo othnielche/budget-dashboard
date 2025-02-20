@@ -12,9 +12,14 @@ import CreateEstate from './sidebar/subMenus/estates/create-estate';
 import ViewAllEstates from './sidebar/subMenus/estates/view-all-estates';
 import ViewAllGroups from './sidebar/subMenus/groups/view-all-groups';
 import CreateGroup from './sidebar/subMenus/groups/create-group';
+import CreateItem from './sidebar/subMenus/item/create-item';
+import Settings from './sidebar/subMenus/Settings/settings';
+import ViewAllItems from './sidebar/subMenus/item/view-all-items';
+import CreateMeasuringUnit from './sidebar/subMenus/measuring-unit/create-measuring-unit';
+import ViewAllMeasuringUnits from './sidebar/subMenus/measuring-unit/view-all-measuring-units';
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
-    if (!activeItem) return <div>No item selected</div>;
+    if (!activeItem) return <div>This is the CDC Budget Application</div>;
 
     switch (activeItem.title) {
         case 'Budgets':
@@ -77,6 +82,16 @@ function ContentArea({ activeItem }) {
             return <div>This is Create New Role</div>;
         case 'View Roles':
             return <div className='items-center justify-center'><ViewRoles /></div>;
+        case 'Settings':
+            return <div><Settings /></div>;
+        case 'Create New Item':
+            return <div><CreateItem /></div>;
+        case 'View Items':
+            return <div><ViewAllItems /></div>;
+        case 'Create New Measuring Unit':
+            return <div><CreateMeasuringUnit /></div>
+        case 'View Measuring Units':
+            return <div><ViewAllMeasuringUnits /></div>
         default:
             return <div>Unknown item: {activeItem.title} and {user.estateCode}</div>;
     }

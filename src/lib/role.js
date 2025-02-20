@@ -24,7 +24,8 @@ const ROLES = {
             "manage:cost-units", 
             "manage:cost-centers",
             "manage:roles",
-            "manage:ites"
+            "manage:ites",
+            "manage:settings"
         ],
         scope: "all",
     },
