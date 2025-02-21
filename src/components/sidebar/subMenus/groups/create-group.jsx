@@ -130,6 +130,7 @@ function CreateGroup() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
       <AlertDialog open={openAlertDialog} onOpenChange={handleAlertDialogClose}>
         <AlertDialogContent>
           <AlertDialogHeader>

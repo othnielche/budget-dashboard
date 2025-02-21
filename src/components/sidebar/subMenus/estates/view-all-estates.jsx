@@ -144,7 +144,6 @@ function ViewAllEstates() {
     }
   };
 
-
   useEffect(() => {
     const fetchGroups = async () => {
       try {
