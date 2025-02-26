@@ -205,9 +205,6 @@ function CreateEstate() {
           </div>
       </form>
        <AlertDialog open={open} onOpenChange={setOpen}>
-          <AlertDialogTrigger asChild>
-            <span></span>
-          </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm Estate Creation</AlertDialogTitle>
@@ -229,6 +226,7 @@ function CreateEstate() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
         <AlertDialog open={openAlertDialog} onOpenChange={handleAlertDialogClose}>
           <AlertDialogContent>
             <AlertDialogHeader>

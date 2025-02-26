@@ -19,13 +19,12 @@ import {
 
 function CreateItem() {
   const { user } = useContext(AuthContext);
-  cosnt 
   
   return (
     <div>
-
+      asdasd
     </div>
   )
 }
 
-export default CreateItem
+export default CreateItem 
