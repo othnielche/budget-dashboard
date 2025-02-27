@@ -14,10 +14,11 @@ function Budget() {
   return (
     <div className='flex max-w-screen-2xl flex-col'>
         <Tabs defaultValue="createBudget" className="w-full overflow-hidden">
-            <TabsList className="grid max-w-lg grid-cols-2">
+            <TabsList className="">
                 <TabsTrigger value="createBudget">Create Budget</TabsTrigger>
                 <TabsTrigger value="importBudgetLines">Import Budget Lines</TabsTrigger>
-                <TabsTrigger value="viewBudgets">View Budgets</TabsTrigger>
+                {/* <TabsTrigger value="viewBudgets">View Budgets</TabsTrigger>
+                <TabsTrigger value="viewBudget">View Budgets</TabsTrigger> */}
             </TabsList>
             <TabsContent value="createBudget" >
                 <CreateBudget />
@@ -25,9 +26,10 @@ function Budget() {
             <TabsContent value="importBudgetLines">
                 <ImportBudgetLines />
             </TabsContent>
-            <TabsContent value="viewBudgets">
+            {/* <TabsContent value="viewBudgets">
                 <ViewBudgets />
             </TabsContent>
+            <TabsContent value="viewBudget"></TabsContent> */}
         </Tabs>
     </div>
   )
