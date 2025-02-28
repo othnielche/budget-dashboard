@@ -46,6 +46,7 @@ import {
 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 
 
 
@@ -203,9 +204,10 @@ function ViewAllEstates() {
           </div>
         </div>
       <div className=''>
+        <Card className='mt-4'> 
+
         <div className='flex  mt-4'>
           <Table>
-            <TableCaption>Estates</TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>Estate ID</TableHead>
@@ -284,6 +286,8 @@ function ViewAllEstates() {
             </TableBody>
           </Table>
         </div>
+        </Card>
+            <TableCaption className='flex justify-center'>Estates</TableCaption>
       </div>
 
       <AlertDialog open={openEditDialog} onOpenChange={setOpenEditDialog}>

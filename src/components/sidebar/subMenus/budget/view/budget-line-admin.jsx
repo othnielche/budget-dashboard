@@ -1,177 +1,304 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { AuthContext } from '@/contexts/authContext';
-import API from '@/lib/axios';
+// import React, { useState, useEffect, useContext } from 'react';
+// import { AuthContext } from '@/contexts/authContext';
+// import API from '@/lib/axios';
 
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
-import { Table, TableCaption,TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+// import {
+//   Pagination,
+//   PaginationContent,
+//   PaginationPrevious,
+//   PaginationNext,
+// } from "@/components/ui/pagination";
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Button } from '@/components/ui/button';
+// import { Input } from '@/components/ui/input';
+// import { ScrollArea } from '@/components/ui/scroll-area';
+// import { Card, CardTitle } from "@/components/ui/card";
 
+// function BudgetLineAdmin() {
+//   const { user } = useContext(AuthContext);
+//   const [budgetLines, setBudgetLines] = useState([]);
+//   const [loading, setLoading] = useState(false);
+//   const [currentPage, setCurrentPage] = useState(1);
+//   const [totalPages, setTotalPages] = useState(1);
+//   const [estateId, setEstateId] = useState('');
+//   const [year, setYear] = useState('');
+//   const [expandedRow, setExpandedRow] = useState(null);
 
-import Toast from '@/components/ui/sonner';
-import API from '@/lib/axios';
-import { AuthContext } from '@/contexts/authContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Filter } from 'lucide-react';
+//   const fetchBudgetLines = async () => {
+//     if (!estateId || !year) return;
+//     setLoading(true);
+//     try {
+//       const response = await API.get(`/budgetline/get-budget-lines-by-estate`, {
+//         headers: {
+//           Authorization: `Bearer ${user.token}`,
+//         },
+//         params: { estateId, year, page: currentPage }
+//       });
+  
+//       console.log(response.data);
+//       const budgetLines = response.data.Budgets.BudgetLines;
+//       const formattedBudgetLines = budgetLines.map((budgetLine) => {
+//         return {
+//           id: budgetLine.BudgetLineID,
+//           totalBudgetedAmount: budgetLine.TotalBudgetedAmount,
+//           budgetId: budgetLine.BudgetID,
+//           costUnitId: budgetLine.CostUnitID,
+//           budgetLineItems: budgetLine.BudgetLineItems.map((budgetLineItem) => {
+//             return {
+//               id: budgetLineItem.BudgetLineItemID,
+//               budgetLineId: budgetLineItem.BudgetLineID,
+//               itemId: budgetLineItem.ItemID,
+//               item: {
+//                 id: budgetLineItem.Item.ItemID,
+//                 code: budgetLineItem.Item.ItemCode,
+//                 name: budgetLineItem.Item.ItemName,
+//                 unitCost: budgetLineItem.Item.UnitCost,
+//                 measuringUnitId: budgetLineItem.Item.MeasuringUnitID,
+//                 measuringUnit: {
+//                   id: budgetLineItem.Item.MeasuringUnit.MeasuringUnitID,
+//                   name: budgetLineItem.Item.MeasuringUnit.MeasuringUnitName,
+//                   symbol: budgetLineItem.Item.MeasuringUnit.MeasuringUnitSymbol,
+//                 },
+//               },
+//             };
+//           }),
+//           monthlyPhasings: budgetLine.MonthlyPhasings.map((monthlyPhasing) => {
+//             return {
+//               id: monthlyPhasing.MonthlyPhasingID,
+//               budgetLineId: monthlyPhasing.BudgetLineID,
+//               month: monthlyPhasing.Month,
+//               allocatedMonthBudget: monthlyPhasing.AllocatedMonthBudget,
+//             };
+//           }),
+//         };
+//       });
+//       setBudgetLines(formattedBudgetLines);
+//       setTotalPages(response.data.totalPages);
+//     } catch (error) {
+//       console.error("Error fetching budget lines", error);
+//     }
+//     setLoading(false);
+//   };
 
-import { Card, CardTitle } from "../ui/card"
+//   const toggleExpandRow = (id) => {
+//     setExpandedRow(expandedRow === id ? null : id);
+//   };
+
+//   return (
+//     <Card>
+//       <CardTitle>Budget Lines</CardTitle>
+//       <div className="p-4 flex gap-4">
+//         <Input 
+//           placeholder="Enter Estate ID"
+//           value={estateId}
+//           onChange={(e) => setEstateId(e.target.value)}
+//         />
+//         <Input 
+//           placeholder="Enter Year"
+//           value={year}
+//           onChange={(e) => setYear(e.target.value)}
+//         />
+//         <Button onClick={fetchBudgetLines} disabled={loading}>Fetch</Button>
+//       </div>
+//       <ScrollArea>
+//         <Table>
+//           <TableHeader>
+//             <TableRow>
+//               <TableHead>Budget Line ID</TableHead>
+//               <TableHead>Item Unit Cost</TableHead>
+//               <TableHead>Measuring Unit</TableHead>
+//               <TableHead>Actions</TableHead>
+//             </TableRow>
+//           </TableHeader>
+//           <TableBody>
+//             {budgetLines.map((line) => (
+//               <React.Fragment key={line.BudgetLineID}>
+//                 <TableRow onClick={() => toggleExpandRow(line.BudgetLineID)}>
+//                   <TableCell>{line.BudgetLineID}</TableCell>
+//                   <TableCell>{line.BudgetLineItems[0]?.Item?.CostUnit?.CostUnitCode || "N/A"}</TableCell>
+//                   <TableCell>{line.BudgetLineItems[0]?.Item?.MeasuringUnit?.MeasuringUnitSymbol || "N/A"}</TableCell>
+//                   <TableCell>
+//                     <Button variant="outline" onClick={() => toggleExpandRow(line.BudgetLineID)}>
+//                       {expandedRow === line.BudgetLineID ? "Collapse" : "Expand"}
+//                     </Button>
+//                   </TableCell>
+//                 </TableRow>
+//                 {expandedRow === line.BudgetLineID && (
+//                   <TableRow>
+//                     <TableCell colSpan={4}>
+//                       <div>
+//                         <h4>Details</h4>
+//                         <p>Total Budgeted Amount: {line.TotalBudgetedAmount}</p>
+//                         <p>Budget ID: {line.BudgetID}</p>
+//                         <p>Cost Unit ID: {line.CostUnitID}</p>
+//                         <h4>Monthly Phasing</h4>
+//                         <Table>
+//                           <TableBody>
+//                             {line.MonthlyPhasing.map((month) => (
+//                               <TableRow key={month.MonthlyPhasingID}>
+//                                 <TableCell>{month.Month}</TableCell>
+//                                 <TableCell>{month.AllocatedMonthBudget}</TableCell>
+//                               </TableRow>
+//                             ))}
+//                           </TableBody>
+//                         </Table>
+//                       </div>
+//                     </TableCell>
+//                   </TableRow>
+//                 )}
+//               </React.Fragment>
+//             ))}
+//           </TableBody>
+//         </Table>
+//       </ScrollArea>
+//       <Pagination>
+//         <PaginationContent>
+//           <PaginationPrevious onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} />
+//           <PaginationNext onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} />
+//         </PaginationContent>
+//       </Pagination>
+//     </Card>
+//   );
+// }
+
+// export default BudgetLineAdmin;
+
 
 
 function BudgetLineAdmin() {
   const { user } = useContext(AuthContext);
   const [budgetLines, setBudgetLines] = useState([]);
-  const [filteredBudgetLines, setFilteredBudgetLines] = useState([]);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [estateId, setEstateId] = useState(null);
-  const [year, setYear] = useState(null);
+  const [estateId, setEstateId] = useState('');
+  const [year, setYear] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
 
-  // Function to fetch budget lines
   const fetchBudgetLines = async () => {
+    if (!estateId || !year) return;
+    setLoading(true);
     try {
-      const response = await API.get("/budgetline/get-budget-lines-by-estate", {
+      const response = await API.get(`/budgetline/get-budget-lines-by-estate`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
         },
-        params: {
-          estateId,
-          year,
-          page: currentPage,
-          limit: 10,
-        },
+        params: { estateId, year, page: currentPage }
       });
-      const data = response.data;
-      setBudgetLines(data.budgetLines);
-      setFilteredBudgetLines(data.budgetLines);
-      setTotalCount(data.totalCount);
-      setTotalPages(data.totalPages);
-      setLoading(false);
+
+      console.log(response.data);
+      const budgetLines = response.data.Budgets.BudgetLines;
+      const formattedBudgetLines = budgetLines.map((budgetLine) => {
+        return {
+          id: budgetLine.BudgetLineID,
+          totalBudgetedAmount: budgetLine.TotalBudgetedAmount,
+          budgetId: budgetLine.BudgetID,
+          costUnitId: budgetLine.CostUnitID,
+          budgetLineItems: budgetLine.BudgetLineItems.map((budgetLineItem) => {
+            return {
+              id: budgetLineItem.BudgetLineItemID,
+              budgetLineId: budgetLineItem.BudgetLineID,
+              itemId: budgetLineItem.ItemID,
+              item: {
+                id: budgetLineItem.Item.ItemID,
+                code: budgetLineItem.Item.ItemCode,
+                name: budgetLineItem.Item.ItemName,
+                unitCost: budgetLineItem.Item.UnitCost,
+                measuringUnitId: budgetLineItem.Item.MeasuringUnitID,
+                measuringUnit: {
+                  id: budgetLineItem.Item.MeasuringUnit.MeasuringUnitID,
+                  name: budgetLineItem.Item.MeasuringUnit.MeasuringUnitName,
+                  symbol: budgetLineItem.Item.MeasuringUnit.MeasuringUnitSymbol,
+                },
+              },
+            };
+          }),
+          monthlyPhasings: budgetLine.MonthlyPhasings.map((monthlyPhasing) => {
+            return {
+              id: monthlyPhasing.MonthlyPhasingID,
+              budgetLineId: monthlyPhasing.BudgetLineID,
+              month: monthlyPhasing.Month,
+              allocatedMonthBudget: monthlyPhasing.AllocatedMonthBudget,
+            };
+          }),
+        };
+      });
+      setBudgetLines(formattedBudgetLines);
+      setTotalPages(response.data.totalPages);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching budget lines", error);
     }
+    setLoading(false);
   };
 
-  const toggleRow = (id) => {
-    setExpandedRow(expandedRow === id ? null : id)
-  }
-
-  // Function to handle search
-  const handleSearch = (e) => {
-    const searchValue = e.target.value;
-    setSearch(searchValue);
-    const filteredData = budgetLines.filter((budgetLine) => {
-      return (
-        budgetLine.budgetLineId.toString().includes(searchValue) ||
-        budgetLine.budgetId.toString().includes(searchValue) ||
-        budgetLine.estateId.toString().includes(searchValue) ||
-        budgetLine.budgetYear.toString().includes(searchValue) ||
-        budgetLine.totalBudgetedAmount.toString().includes(searchValue) ||
-        budgetLine.remainingBudget.toString().includes(searchValue) ||
-        budgetLine.budgetLineItems.some((item) => {
-          return (
-            item.itemId.toString().includes(searchValue) ||
-            item.itemName.includes(searchValue) ||
-            item.itemDescription.includes(searchValue) ||
-            item.itemCode.includes(searchValue)
-          );
-        })
-      );
-    });
-    setFilteredBudgetLines(filteredData);
+  const toggleExpandRow = (id) => {
+    setExpandedRow(expandedRow === id ? null : id);
   };
-
-  // Function to handle pagination
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    fetchBudgetLines();
-  };
-
-  // Function to handle estateId and year changes
-  const handleEstateIdChange = (e) => {
-    setEstateId(e.target.value);
-  };
-
-  const handleYearChange = (e) => {
-    setYear(e.target.value);
-  };
-
-  // Use effect to fetch budget lines on mount and when estateId or year changes
-  useEffect(() => {
-    fetchBudgetLines();
-  }, [estateId, year, currentPage]);
 
   return (
-    <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Budget Line ID</TableHead>
-            <TableHead>Budget ID</TableHead>
-            <TableHead>Estate ID</TableHead>
-            <TableHead>Budget Year</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {budgetLines.map((item) => (
-            <React.Fragment key={item.budgetLineId}>
-              <TableRow className="cursor-pointer" onClick={() => toggleRow(item.budgetLineId)}>
-                <TableCell>{item.budgetLineId}</TableCell>
-                <TableCell>{item.budgetId}</TableCell>
-                <TableCell>{item.estateId}</TableCell>
-                <TableCell>{item.budgetYear}</TableCell>
+    <Card>
+      <CardTitle>Budget Lines</CardTitle>
+      <div className="p-4 flex gap-4">
+        <Input 
+          placeholder="Enter Estate ID"
+          value={estateId}
+          onChange={(e) => setEstateId(e.target.value)}
+        />
+        <Input 
+          placeholder="Enter Year"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+        />
+        <Button onClick={fetchBudgetLines} disabled={loading}>Fetch</Button>
+      </div>
+      <ScrollArea>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Budget Line ID</TableHead>
+              <TableHead>Total Budgeted Amount</TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead>Monthly Phasings</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {budgetLines.map((budgetLine) => (
+              <TableRow key={budgetLine.id}>
+                <TableCell>{budgetLine.id}</TableCell>
+                <TableCell>{budgetLine.totalBudgetedAmount}</TableCell>
                 <TableCell>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      expandedRow === item.budgetLineId ? "transform rotate-180" : ""
-                    }`}
-                  />
+                  <Button onClick={() => toggleExpandRow(budgetLine.id)}>View Items</Button>
+                  {expandedRow === budgetLine.id && (
+                    <div>
+                      {budgetLine.budgetLineItems.map((item) => (
+                        <div key={item.id}>
+                          <p>Item ID: {item.id}</p>
+                          <p>Item Name: {item.item.name}</p>
+                          <p>Unit Cost: {item.item.unitCost}</p>
+                          <p>Measuring Unit: {item.item.measuringUnit.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button onClick={() => toggleExpandRow(budgetLine.id)}>View Monthly Phasings</Button>
+                  {expandedRow === budgetLine.id && (
+                    <div>
+                      {budgetLine.monthlyPhasings.map((monthlyPhasing) => (
+                        <div key={monthlyPhasing.id}>
+                          <p>Month: {monthlyPhasing.month}</p>
+                          <p>Allocated Month Budget: {monthlyPhasing.allocatedMonthBudget}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
-              {expandedRow === item.budgetLineId && (
-                <TableRow>
-                  <TableCell colSpan={5} className="bg-muted">
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold mb-2">Monthly Phasing</h3>
-                      <table className="w-full">
-                        <thead>
-                          <tr>
-                            <th>Month</th>
-                            <th>Allocated Budget</th>
-                            <th>Remaining Budget</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {item.monthlyPhasing.map((phasing) => (
-                            <tr key={phasing.monthlyPhasingId}>
-                              <td>{phasing.month}</td>
-                              <td>{phasing.allocatedMonthBudget}</td>
-                              <td>{phasing.remainingMonthBudget}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </React.Fragment>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </Card>
   );
-}
+  }

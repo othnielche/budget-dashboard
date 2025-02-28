@@ -13,12 +13,15 @@ import {
 } from "@/components/ui/table";
 
 import { Button } from '@/components/ui/button';
+import BudgetLineAdmin from './budget-line-admin';
 
 
 
 function ViewBudgets() {
   return (
-    <div>View</div>
+    <div>
+      <BudgetLineAdmin />
+    </div>
   )
 }
 
