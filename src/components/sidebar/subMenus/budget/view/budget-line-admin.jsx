@@ -302,3 +302,5 @@ function BudgetLineAdmin() {
     </Card>
   );
   }
+
+  export default BudgetLineAdmin
