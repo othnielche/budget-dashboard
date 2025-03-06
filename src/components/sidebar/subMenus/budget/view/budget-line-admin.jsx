@@ -30,7 +30,10 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { 
   ChevronDown, 
   HandCoins, 
-  Filter 
+  Filter,
+  RefreshCw,
+  Search,
+  CalendarIcon 
 } from "lucide-react"
 
 import { 
@@ -42,6 +45,12 @@ import {
 } from '@/components/ui/select';
 import Fuse from 'fuse.js';
 import { fromJSON } from 'postcss';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+import CreateRequisitionForm from '@/components/requisition/create-requisition-form';
+import { toast } from 'sonner';
 
 
 function BudgetLineAdmin() {
@@ -57,6 +66,8 @@ function BudgetLineAdmin() {
   const [year, setYear] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [date, setDate] = useState(null);
+  const [searchInputRef] = useState(null);
 
 
 
@@ -80,7 +91,24 @@ function BudgetLineAdmin() {
 
   const handleEstateChange = (estate) => {
     setEstateId(estate.EstateID);
-    console.log(estateId);
+    // If year is already selected, automatically fetch data
+    if (year) {
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        fetchBudgetLines();
+      }, 100);
+    }
+  };
+
+  const handleYearChange = (selectedYear) => {
+    setYear(selectedYear);
+    // If estateId is already selected, automatically fetch data
+    if (estateId) {
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        fetchBudgetLines();
+      }, 100);
+    }
   };
 
   const fetchBudgetLines = async () => {
@@ -124,70 +152,211 @@ function BudgetLineAdmin() {
   // Create a Fuse instance with the budgetLines data
   useEffect(() => {
     if (budgetLines.length > 0) {
-      const fuse = new Fuse(budgetLines, {
-        keys: ['BudgetLineID', 'BudgetLineItems.Item.ItemName', 'BudgetLineItems.Item.ItemCode', 'CostUnitID'],
-        threshold: 0.6,
-      });
+      console.log("Creating Fuse instance with data:", budgetLines.length, "items");
+      const fuseOptions = {
+        keys: [
+          'BudgetLineID',
+          'CostUnitID',
+          'BudgetLineItems.0.ItemName',
+          'BudgetLineItems.0.ItemCode',
+          'BudgetLineItems.0.MeasuringUnit.MeasuringUnitName',
+          'BudgetLineItems.0.MeasuringUnit.MeasuringUnitSymbol'
+        ],
+        threshold: 0.4, // Lower threshold for more sensitive matching
+        includeScore: true,
+        ignoreLocation: true, // Ignore the location of the pattern within the string
+        useExtendedSearch: true
+      };
+      
+      const fuse = new Fuse(budgetLines, fuseOptions);
       setFuse(fuse);
+      console.log("Fuse instance created successfully with options:", fuseOptions);
     }
-  }, [budgetLines, estateId, year]);
-
-  // Update the Fuse instance with the new budgetLines data
-  const updateFuse = (budgetLines) => {
-    if(fuse) {
-      fuse.setCollection(budgetLines.data);
-    }
-  };
-
+  }, [budgetLines]);
 
   // Search function
-  const handleSearch = () => {
-    if (fuse) {
-      const results = fuse.search(searchTerm);
-      console.log(results);
-      // update the budgetLines state with the search results
-      setBudgetLines(results.map((result) => result.item));
+  const handleSearch = (term) => {
+    console.log("Search triggered with term:", term);
+    
+    if (!term.trim()) {
+      console.log("Empty search term, fetching original data");
+      fetchBudgetLines();
+      return;
+    }
+    
+    if (fuse && budgetLines.length > 0) {
+      console.log("Performing search with Fuse.js");
+      
+      // Store original data before search
+      const originalData = [...budgetLines];
+      
+      const results = fuse.search(term);
+      console.log("Search results:", results);
+      
+      if (results.length > 0) {
+        // Update the budgetLines state with the search results
+        const searchResults = results.map(result => result.item);
+        console.log("Mapped search results:", searchResults);
+        setBudgetLines(searchResults);
+      } else {
+        console.log("No results found for term:", term);
+        // Optionally show a "no results" message instead of clearing the data
+        setBudgetLines([]);
+      }
+    } else {
+      console.log("Cannot search: Fuse instance or budget lines not available", {
+        fuseExists: !!fuse,
+        budgetLinesCount: budgetLines.length
+      });
     }
   };
   
-  // Update the Fuse instance when the budgetLines data changes
+  // Add a function to reset search
+  const resetSearch = () => {
+    setSearchTerm('');
+    fetchBudgetLines();
+  };
+  
+  // Debounce search to avoid too many searches while typing
   useEffect(() => {
-    updateFuse(budgetLines);
-  }, [budgetLines]);
+    console.log("Search term changed:", searchTerm);
+    const delaySearch = setTimeout(() => {
+      if (searchTerm) {
+        console.log("Debounce timer completed, executing search");
+        handleSearch(searchTerm);
+      } else if (searchTerm === '') {
+        // If search term is cleared, reset to original data
+        console.log("Search term cleared, resetting data");
+        fetchBudgetLines();
+      }
+    }, 300);
+    
+    return () => {
+      console.log("Clearing previous debounce timer");
+      clearTimeout(delaySearch);
+    }
+  }, [searchTerm]);
 
+  // Add this to the onChange handler for the search input
+  const handleSearchInputChange = (e) => {
+    console.log("Search input changed:", e.target.value);
+    setSearchTerm(e.target.value);
+  };
+
+  // Update the useEffect for date changes
+  useEffect(() => {
+    if (date) {
+      const newYear = date.getFullYear().toString();
+      setYear(newYear);
+      
+      // If estateId is already selected, automatically fetch data
+      if (estateId) {
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          fetchBudgetLines();
+        }, 100);
+      }
+    }
+  }, [date]);
 
   return (
     <Card>
       <h3 className='p-4 font-bold text-xl'>Budget Lines {estateName ? estateName : ''}</h3>
-      <div className="p-4 flex gap-4">
-        <Select
-          value={estates.find((estate) => estate.EstateID === estateId)}
-          onValueChange={handleEstateChange}
-        >
-          <SelectTrigger ><SelectValue placeholder="Select an Estate" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={null}>Select Estate</SelectItem>
-            {estates.map((estate) => (
-              <SelectItem key={estate.EstateID} value={estate}>
-                {estate.EstateName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          type="search"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            handleSearch(searchTerm);
-          }}
-        />
-        <Input
-          placeholder="Enter Year"
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-        />
-        <Button onClick={fetchBudgetLines} disabled={loading}>Fetch</Button>
+      <div className="p-4 grid grid-cols-12 gap-4">
+        <div className="col-span-3">
+          <Select
+            value={estates.find((estate) => estate.EstateID === estateId)}
+            onValueChange={handleEstateChange}
+          >
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select an Estate" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={null}>Select Estate</SelectItem>
+              {estates.map((estate) => (
+                <SelectItem key={estate.EstateID} value={estate}>
+                  {estate.EstateName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="relative col-span-5">
+          {loading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by ID, item name, code, or unit..."
+                  value={searchTerm}
+                  onChange={handleSearchInputChange}
+                  className="w-full pl-8"
+                  ref={searchInputRef}
+                />
+                {searchTerm && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                    onClick={resetSearch}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        
+        <div className="col-span-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {year ? year : <span>Select year</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4">
+              <div className="grid grid-cols-3 gap-2">
+                {Array.from({ length: 11 }, (_, i) => 2020 + i).map((yearOption) => (
+                  <Button
+                    key={yearOption}
+                    variant={year === yearOption.toString() ? "default" : "outline"}
+                    className="h-9 w-full"
+                    onClick={() => {
+                      handleYearChange(yearOption.toString());
+                      // Close the popover after selection
+                      document.querySelector('[data-radix-popper-content-id]')?.closest('button')?.click();
+                    }}
+                  >
+                    {yearOption}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        
+        <div className="col-span-2">
+          <Button onClick={fetchBudgetLines} disabled={loading} className="w-full">
+            {loading ? (
+              <>
+                <Skeleton className="h-4 w-4 mr-2 rounded-full" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </>
+            )}
+          </Button>
+        </div>
       </div>
         <Table>
           <TableHeader>
@@ -208,53 +377,70 @@ function BudgetLineAdmin() {
           {budgetLines.map((line) => 
           <React.Fragment key={line.BudgetLineID}>
 
-            <TableRow className="cursor-pointer" onClick={() => toggleExpandRow(line.BudgetLineID)}>
+            <TableRow 
+              className="cursor-pointer hover:bg-muted/50 transition-colors" 
+              onClick={() => toggleExpandRow(line.BudgetLineID)}
+            >
               <TableCell>{line.BudgetLineID}</TableCell>
               <TableCell className="">{line.BudgetLineItems[0].ItemName}</TableCell>
-              <TableCell >{line.BudgetLineItems[0].ItemCode}</TableCell>
+              <TableCell>{line.BudgetLineItems[0].ItemCode}</TableCell>
               <TableCell>{line.BudgetLineItems[0].UnitCost}</TableCell>
               <TableCell>{line.CostUnitID}</TableCell>
               <TableCell>{line.BudgetLineItems[0].MeasuringUnit.MeasuringUnitSymbol}</TableCell>
-              <TableCell className='flex '>{line.TotalBudgetedAmount} <div className=' text-right font-bold'>FCFA</div></TableCell>
+              <TableCell className='flex'>{line.TotalBudgetedAmount} <div className='text-right font-bold'>FCFA</div></TableCell>
               <TableCell>
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${
+                  className={`h-4 w-4 transition-transform duration-300 ${
                     expandedRow === line.BudgetLineID ? "transform rotate-180" : ""
                   }`}
                 />
               </TableCell>
             </TableRow>
             {expandedRow === line.BudgetLineID && (
-              <TableRow>
-                <TableCell colSpan={8} className={`bg-muted transition-all duration-500 ease-in-out ${expandedRow === line.BudgetLineID ? 'max-h-screen' : 'max-h-0 overflow-hidden'}`}>
-                  <div className="flex flex-row p-4">
-                    <div className='w-1/2'>
-                      <h3 className="text-lg font-semibold mb-2">Additional Details</h3>
-                      <div className='w-1/2'>
-                      <p>{line.BudgetLineItems[0].ItemName}</p>
-                        <Card className='bg-muted' >
-                          <Table>
-                            <TableCaption>Monthly Budget Allocation for 2025</TableCaption>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-[150px]">Month</TableHead>
-                                <TableHead className='text-right'>Budget Amount</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {line.MonthlyPhasings.map((month) => (
-                                <TableRow key={month.MonthlyPhasingID}>
-                                  <TableCell className="font-medium">{getMonthName(month.Month)}</TableCell>
-                                  <TableCell className='text-right'>{month.AllocatedMonthBudget ? month.AllocatedMonthBudget : 0}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </Card>
+              <TableRow className="animate-in fade-in-0 duration-300">
+                <TableCell colSpan={8} className="p-0 border-b">
+                  <div className="overflow-hidden transition-all duration-300 ease-in-out" 
+                       style={{ maxHeight: expandedRow === line.BudgetLineID ? '2000px' : '0' }}>
+                    <div className="bg-muted p-4">
+                      <div className="flex flex-row gap-4">
+                        <div className='w-1/2'>
+                          <div className='w-full'>
+                            <Card className='p-4'>
+                              <Table>
+                                <TableCaption>Monthly Budget Allocation for {year}</TableCaption>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-[150px]">Month</TableHead>
+                                    <TableHead className='text-right'>Budget Amount</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {line.MonthlyPhasings.map((month) => (
+                                    <TableRow key={month.MonthlyPhasingID}>
+                                      <TableCell className="font-medium">{getMonthName(month.Month)}</TableCell>
+                                      <TableCell className='text-right'>{month.AllocatedMonthBudget ? month.AllocatedMonthBudget : 0}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </Card>
+                          </div>
+                        </div>
+                        <div className='flex flex-col w-1/2 pl-4'>
+                          <Card className="p-4">
+                            <CardTitle className="mb-4">Create Requisition</CardTitle>
+                            <CreateRequisitionForm 
+                              budgetLineId={line.BudgetLineID}
+                              budgetLineName={line.BudgetLineItems[0].ItemName}
+                              maxQuantity={line.TotalBudgetedAmount}
+                              onSuccess={() => {
+                                fetchBudgetLines();
+                                toast.success("Requisition created successfully");
+                              }}
+                            />
+                          </Card>
+                        </div>
                       </div>
-                    </div>
-                    <div className='flex flex-col w-1/2 text-right justify-end items-end'>
-                    <Button className='bottom-0'><HandCoins />Make Requisition</Button>
                     </div>
                   </div>
                 </TableCell>

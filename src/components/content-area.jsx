@@ -19,6 +19,7 @@ import CreateMeasuringUnit from './sidebar/subMenus/measuring-unit/create-measur
 import ViewAllMeasuringUnits from './sidebar/subMenus/measuring-unit/view-all-measuring-units';
 import Budget from './sidebar/subMenus/budget/create/budget';
 import ViewBudgets from './sidebar/subMenus/budget/view/view-budget';
+import ViewRequisitions from './requisition/view-requisitions';
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
     if (!activeItem) return <div>This is the CDC Budget Application</div>;
@@ -37,7 +38,7 @@ function ContentArea({ activeItem }) {
         case 'Create New Requisition':
             return <div>This is the Create New Requisition</div>;
         case 'View Requisitions':
-            return <div>This is View Requisitions</div>;
+            return <div><ViewRequisitions /></div>;
         case 'Local Purchase Order':
             return <div>This is Local Purchase Order</div>;
         case 'View LPO Reports':

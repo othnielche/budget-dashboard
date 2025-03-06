@@ -53,7 +53,7 @@ export function AppSidebar({ onItemClick }) {
     <div className="">
     <Sidebar> 
         <SidebarHeader>
-            CDC BUDGET APPLICATION {user1.role} Dashboard
+            CDC BUDGET APPLICATION {user.roleCode} Dashboard
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>

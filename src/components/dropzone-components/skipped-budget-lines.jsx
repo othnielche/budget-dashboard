@@ -4,41 +4,28 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { Table, TableCaption,TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Table, TableCaption, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardTitle } from "../ui/card"
-
-// export const columns = [
-//   {
-//     accessorKey: "row",
-//     header: "Row Data",
-//     cell: ({ row }) => (
-//       <div>
-//         <pre>{JSON.stringify(row.getValue("row"), null, 2)}</pre>
-//       </div>
-//     ),
-//   },
-//   {
-//     accessorKey: "reason",
-//     header: "Reason",
-//     cell: ({ row }) => <div>{row.getValue("reason")}</div>,
-//   },
-// ]
 
 export const columns = [
     {
-      accessorKey: "row.EstateCode",
+      accessorKey: "lineNumber",
+      header: "Line Number",
+    },
+    {
+      accessorKey: "data.EstateCode",
       header: "Estate Code",
     },
     {
-      accessorKey: "row.ItemName",
+      accessorKey: "data.ItemName",
       header: "Item Name",
     },
     {
-      accessorKey: "row.BudgetYear",
+      accessorKey: "data.BudgetYear",
       header: "Financial Year",
     },
     {
-      accessorKey: "row.QuantityBudgeted",
+      accessorKey: "data.QuantityBudgeted",
       header: "Quantity Budgeted",
     },
     {
@@ -47,18 +34,19 @@ export const columns = [
     },
   ]
 
-  export function SkippedBudgetLines({ skippedBudgetLines }) {
-    const table = useReactTable({
-      data: skippedBudgetLines,
-      columns,
-      getCoreRowModel: getCoreRowModel(),
-    })
+export function SkippedBudgetLines({ skippedBudgetLines }) {
+  const table = useReactTable({
+    data: skippedBudgetLines || [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
   
-    return (
-      <div className="w-full mt-4">
-          <CardTitle className='mt-4 mb-2 ml-2'>
-              Rejected Budget Lines 
-          </CardTitle>
+  return (
+    <div className="w-full mt-4">
+        <CardTitle className='mt-4 mb-2 ml-2'>
+            Rejected Budget Lines 
+            {skippedBudgetLines?.length > 0 && ` (${skippedBudgetLines.length})`}
+        </CardTitle>
       <Card> 
         <Table>
           <TableHeader>
@@ -82,6 +70,7 @@ export const columns = [
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
+                  className="border-b hover:bg-muted/50"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -105,82 +94,7 @@ export const columns = [
             )}
           </TableBody>
         </Table>
-        {skippedBudgetLines && skippedBudgetLines.length > 0 && (
-          <div className="mt-4">
-            <strong>Errors:</strong>
-            <ul>
-              {skippedBudgetLines.map((line, index) => (
-                <li key={index}>
-                  Line {line.lineNumber}: {line.reason}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </Card>
-      </div>
-    )
-  }
-
-// export function SkippedBudgetLines({ skippedBudgetLines }) {
-//   const table = useReactTable({
-//     data: skippedBudgetLines,
-//     columns,
-//     getCoreRowModel: getCoreRowModel(),
-//   })
-
-//   return (
-//     <div className="w-full mt-4">
-//         <CardTitle className='mt-4 mb-2 ml-2'>
-//             Rejected Budget Lines 
-//         </CardTitle>
-//     <Card> 
-//       <Table>
-//         <TableHeader>
-//           {table.getHeaderGroups().map((headerGroup) => (
-//             <TableRow key={headerGroup.id}>
-//               {headerGroup.headers.map((header) => (
-//                 <TableHead key={header.id}>
-//                   {header.isPlaceholder
-//                     ? null
-//                     : flexRender(
-//                         header.column.columnDef.header,
-//                         header.getContext()
-//                       )}
-//                 </TableHead>
-//               ))}
-//             </TableRow>
-//           ))}
-//         </TableHeader>
-//         <TableBody>
-//           {table.getRowModel().rows?.length ? (
-//             table.getRowModel().rows.map((row) => (
-//               <TableRow
-//                 key={row.id}
-//               >
-//                 {row.getVisibleCells().map((cell) => (
-//                   <TableCell key={cell.id}>
-//                     {flexRender(
-//                       cell.column.columnDef.cell,
-//                       cell.getContext()
-//                     )}
-//                   </TableCell>
-//                 ))}
-//               </TableRow>
-//             ))
-//           ) : (
-//             <TableRow>
-//               <TableCell
-//                 colSpan={columns.length}
-//                 className="h-24 text-center"
-//               >
-//                 No skipped budget lines.
-//               </TableCell>
-//             </TableRow>
-//           )}
-//         </TableBody>
-//       </Table>
-//     </Card>
-//     </div>
-//   )
-// }
+    </div>
+  )
+}

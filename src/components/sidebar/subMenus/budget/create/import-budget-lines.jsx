@@ -18,12 +18,15 @@ const ImportBudgetLines = () => {
   const [skippedBudgetLines, setSkippedBudgetLines] = useState([]);
   const [selectedFileName, setSelectedFileName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: acceptedFiles => {
       setFile(acceptedFiles[0]);
       setSelectedFileName(acceptedFiles[0].name);
-
+      // Reset previous import results when a new file is selected
+      setSkippedBudgetLines([]);
+      setImportResult(null);
     },
     onDropRejected: () => {
       setFile(null);
@@ -47,18 +50,33 @@ const ImportBudgetLines = () => {
         },
       })
         .then(response => {
-          const skippedLines = response.data.skippedLines;
-          setSkippedBudgetLines(skippedLines); // update the state with the skipped lines
-          console.log(response.data);
+          // Store the entire response for displaying appropriate messages
+          setImportResult(response.data);
+          
+          // Set skipped budget lines if they exist
+          const skippedLines = response.data.errors || [];
+          setSkippedBudgetLines(skippedLines);
         })
-        .catch(error => console.error(error))
+        .catch(error => {
+          console.error(error);
+          // Handle error response if it contains skipped lines
+          if (error.response && error.response.data && error.response.data.errors) {
+            setSkippedBudgetLines(error.response.data.errors);
+            setImportResult(error.response.data);
+          }
+        })
         .finally(() => {
           setIsUploading(false);
-        }
-        )  
+        });
     }
   };
 
+  const resetForm = () => {
+    setFile(null);
+    setSelectedFileName('');
+    setSkippedBudgetLines([]);
+    setImportResult(null);
+  };
 
   return (
     <div className=''>
@@ -90,14 +108,31 @@ const ImportBudgetLines = () => {
                   <p className="ml-2 font-semibold">{selectedFileName}</p>
                 </div>
               </Card>
-            )}        
+            )}
+            
+            {importResult && (
+              <div className={`mt-4 p-4 rounded-md ${
+                importResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 
+                'bg-red-50 text-red-700 border border-red-200'
+              }`}>
+                <p className="font-medium">{importResult.message}</p>
+                {importResult.totalRows && (
+                  <p className="text-sm mt-1">
+                    Total rows processed: {importResult.totalRows}
+                    {importResult.importedCount !== undefined && ` | Imported: ${importResult.importedCount}`}
+                    {importResult.errors && ` | Errors: ${importResult.errors.length}`}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter>
-          <Button variant="outline" size="lg" onClick={()=>{
-            setFile(null);
-            setSelectedFileName('');
-          }}>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            onClick={resetForm}
+          >
             Cancel
           </Button>
           <Button 
@@ -105,7 +140,7 @@ const ImportBudgetLines = () => {
             variant="" 
             size="lg" 
             onClick={handleUpload}
-            disabled={isUploading}
+            disabled={isUploading || !file}
           >
             {isUploading ? (
               <div className="flex items-center">
@@ -122,10 +157,9 @@ const ImportBudgetLines = () => {
         </CardFooter>
       </Card>
       <div>
-        {/* { skippedBudgetLines <= 0 && (
-        )
-        } */}
-      <SkippedBudgetLines skippedBudgetLines={skippedBudgetLines} />
+        {skippedBudgetLines.length > 0 && (
+          <SkippedBudgetLines skippedBudgetLines={skippedBudgetLines} />
+        )}
       </div>
     </div>
   );
