@@ -33,7 +33,7 @@ const CreateRequisitionForm = ({ budgetLineId, budgetLineName, maxQuantity, onSu
     setIsSubmitting(true);
     
     try {
-      const response = await API.post('/requisition/create-requisition', {
+      const response = await API.post('/requisition/create', {
         budgetLineId,
         quantityRequested: parseFloat(quantityRequested),
         comment

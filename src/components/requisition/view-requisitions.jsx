@@ -5,7 +5,7 @@ import API from '@/lib/axios';
 import { AuthContext } from "@/contexts/authContext";
 
 // Import your own table components
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter, TableCaption } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { Pagination, PaginationContent, PaginationPrevious, PaginationNext } fro
 import { RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Fuse from 'fuse.js';
+import { toast } from 'sonner';
 
 function ViewRequisitions() {
 
@@ -30,6 +31,14 @@ function ViewRequisitions() {
     const [fuse, setFuse] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const searchInputRef = useRef(null);
+    const [expandedRow, setExpandedRow] = useState(null);
+    const [budgetLineDetails, setBudgetLineDetails] = useState(null);
+    const [loadingBudgetDetails, setLoadingBudgetDetails] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [showRejectionInput, setShowRejectionInput] = useState(false);
+    const [expenditureHistory, setExpenditureHistory] = useState(null);
+    const [yearlyExpenditures, setYearlyExpenditures] = useState(null);
+    const [monthlyExpenditures, setMonthlyExpenditures] = useState(null);
     
     // Status options for filtering
     const statusOptions = [
@@ -62,7 +71,7 @@ function ViewRequisitions() {
         
         setLoading(true);
         try {
-            const response = await API.get('/requisition/get-all-requisitions-by-estate-and-status', {
+            const response = await API.get('/requisition/by-estate-and-status', {
                 headers: {
                     Authorization: `Bearer ${user.token}`,
                 },
@@ -192,6 +201,196 @@ function ViewRequisitions() {
         setSearchTerm(e.target.value);
     };
 
+    // Function to fetch budget line details and expenditure history
+    const fetchBudgetLineDetails = async (requisitionId) => {
+        setLoadingBudgetDetails(true);
+        try {
+            // Find the current requisition from our state
+            const currentRequisition = requisitions.find(req => req.RequisitionID === requisitionId);
+            
+            if (!currentRequisition || !currentRequisition.BudgetLineID) {
+                toast.error("Budget line information not available");
+                return;
+            }
+            
+            // Use the budget line ID from the requisition
+            const budgetLineId = currentRequisition.BudgetLineID;
+            
+            // Calculate budget utilization from existing requisitions
+            const relatedRequisitions = requisitions.filter(req => 
+                req.BudgetLineID === budgetLineId
+            );
+            
+            // Calculate total amount requested for this budget line
+            const totalRequested = relatedRequisitions.reduce((sum, req) => 
+                sum + parseFloat(req.AmountRequested || 0), 0
+            );
+            
+            // Calculate pending amount (only from pending requisitions)
+            const pendingAmount = relatedRequisitions
+                .filter(req => req.Status === 'Pending')
+                .reduce((sum, req) => sum + parseFloat(req.AmountRequested || 0), 0);
+            
+            // Calculate approved amount
+            const approvedAmount = relatedRequisitions
+                .filter(req => req.Status === 'Approved')
+                .reduce((sum, req) => sum + parseFloat(req.AmountRequested || 0), 0);
+            
+            // Calculate forwarded amount
+            const forwardedAmount = relatedRequisitions
+                .filter(req => req.Status === 'Forwarded')
+                .reduce((sum, req) => sum + parseFloat(req.AmountRequested || 0), 0);
+            
+            // Calculate remaining budget
+            const totalBudget = parseFloat(currentRequisition.BudgetLine?.TotalBudgetedAmount || 0);
+            const remainingBudget = totalBudget - approvedAmount;
+            
+            // Calculate utilization percentage
+            const utilizationPercentage = totalBudget > 0 
+                ? (approvedAmount / totalBudget) * 100 
+                : 0;
+            
+            // Set budget details
+            const budgetDetails = {
+                budgetLine: currentRequisition.BudgetLine,
+                totalBudget: totalBudget,
+                approvedAmount: approvedAmount,
+                pendingAmount: pendingAmount,
+                forwardedAmount: forwardedAmount,
+                remainingBudget: remainingBudget,
+                utilizationPercentage: utilizationPercentage,
+                relatedRequisitions: relatedRequisitions
+            };
+            
+            setBudgetLineDetails(budgetDetails);
+            
+            console.log(budgetLineId);
+            console.log(budgetLineDetails);
+            // Try to fetch additional expenditure data if the endpoint exists
+            try {
+                // Get current year for the query parameter
+                const currentYear = new Date().getFullYear();
+                console.log('i am in the console')
+                
+                const expenditureResponse = await API.get(`/requisition/budget-line-expenditure/${budgetLineId}`, {
+                headers: {
+                    Authorization: `Bearer ${user.token}`,
+                    },
+                    params: {
+                        year: currentYear // Add the year parameter required by the backend
+                    }
+                });
+                if (expenditureResponse.status === 200) {
+                    console.log(`expeditureResponse: ${expenditureResponse.data.monthlyData[0].month}`);
+                    
+                    // Update budget details with expenditure data if available
+                    setBudgetLineDetails(prev => ({
+                    ...prev,
+                    expenditureData: expenditureResponse.data
+                }));
+                }
+                
+            } catch (error) {
+                console.log("Budget expenditure endpoint not available yet:", error);
+                // We already set basic details, so we can continue
+            }
+            
+        } catch (error) {
+            console.error("Error processing budget details:", error);
+            toast.error("Failed to process budget details");
+        } finally {
+            setLoadingBudgetDetails(false);
+        }
+    };
+    
+    // Toggle row expansion
+    const toggleRowExpansion = (requisitionId) => {
+        if (expandedRow === requisitionId) {
+            setExpandedRow(null);
+            setBudgetLineDetails(null);
+            setShowRejectionInput(false);
+            setRejectionReason('');
+        } else {
+            setExpandedRow(requisitionId);
+            fetchBudgetLineDetails(requisitionId);
+        }
+    };
+    
+    // Check if user has permission to manage requisitions
+    const canManageRequisitions = () => {
+        return user && [1, 2, 3].includes(user.roleCode);
+    };
+    
+    // Handle requisition approval
+    const handleApproveRequisition = async (requisitionId) => {
+        try {
+            const response = await API.put('/requisition/approve', 
+                { requisitionId },
+                {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`,
+                    }
+                }
+            );
+            console.log(response);
+            toast.success("Requisition approved successfully");
+            fetchRequisitions();
+        } catch (error) {
+            console.error("Error approving requisition:", error);
+            toast.error("Failed to approve requisition");
+        }
+    };
+    
+    // Handle requisition rejection
+    const handleRejectRequisition = async (requisitionId) => {
+        if (!rejectionReason.trim()) {
+            toast.error("Please provide a reason for rejection");
+            return;
+        }
+        
+        try {
+            await API.post('/requisition/reject-requisition', 
+                { requisitionId, rejectionReason },
+                {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`,
+                    }
+                }
+            );
+            toast.success("Requisition rejected successfully");
+            setRejectionReason('');
+            setShowRejectionInput(false);
+            fetchRequisitions();
+        } catch (error) {
+            console.error("Error rejecting requisition:", error);
+            toast.error("Failed to reject requisition");
+        }
+    };
+    
+    // Handle requisition forwarding
+    const handleForwardRequisition = async (requisitionId) => {
+        try {
+            const response = await API.put(`/requisition/forward/${requisitionId}`,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`,
+                    },
+                }
+            );
+            console.log(response);
+            if (response.status === 200) {
+                toast.success("Requisition forwarded successfully");
+            fetchRequisitions();
+            } else {
+                toast.error("Failed to forward requisition");
+            }
+        } catch (error) {
+            console.error("Error forwarding requisition:", error);
+            toast.error("Failed to forward requisition");
+        }
+    };
+
     return (
         <Card className="">
             <h3 className='mb-4 font-bold text-xl p-4'>View Requisitions</h3>
@@ -309,35 +508,253 @@ function ViewRequisitions() {
                             </TableRow>
                         ))
                     ) : requisitions.length > 0 ? (
-                        // Show requisition data
+                        // Show requisition data with expandable rows
                         requisitions.map((req) => (
-                            <TableRow key={req.RequisitionID} className="hover:bg-muted/50 transition-colors">
-                                <TableCell>{req.RequisitionID}</TableCell>
-                                <TableCell>{req.Item?.ItemName || 'N/A'}</TableCell>
-                                <TableCell>{req.QuantityRequested}</TableCell>
-                                <TableCell>{parseFloat(req.Item?.UnitCost || 0).toLocaleString()} FCFA</TableCell>
-                                <TableCell>{parseFloat(req.AmountRequested || 0).toLocaleString()} FCFA</TableCell>
-                                <TableCell>{getUserName(req.RaisedBy)}</TableCell>
-                                <TableCell>
-                                    {new Date(req.DataRaised || req.createdAt).toLocaleString('en-GB', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </TableCell>
-                                <TableCell>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        req.Status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                        req.Status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                        req.Status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {req.Status}
-                                    </span>
-                                </TableCell>
-                            </TableRow>
+                            <React.Fragment key={req.RequisitionID}>
+                                <TableRow 
+                                    className={`hover:bg-muted/50 transition-colors cursor-pointer ${
+                                        expandedRow === req.RequisitionID ? 'bg-muted/50' : ''
+                                    }`}
+                                    onClick={() => {
+                                        toggleRowExpansion(req.RequisitionID);
+                                        setRejectionReason('');
+                                    }}
+                                >
+                                    <TableCell>{req.RequisitionID}</TableCell>
+                                    <TableCell>{req.Item?.ItemName || 'N/A'}</TableCell>
+                                    <TableCell>{req.QuantityRequested}</TableCell>
+                                    <TableCell>{parseFloat(req.Item?.UnitCost || 0).toLocaleString()} FCFA</TableCell>
+                                    <TableCell>{parseFloat(req.AmountRequested || 0).toLocaleString()} FCFA</TableCell>
+                                    <TableCell>{getUserName(req.RaisedBy)}</TableCell>
+                                    <TableCell>
+                                        {new Date(req.DataRaised || req.createdAt).toLocaleString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            req.Status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                            req.Status === 'Approved' ? 'bg-green-100 text-green-800' :
+                                            req.Status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                            req.Status === 'Forwarded' ? 'bg-blue-100 text-blue-800' :
+                                            'bg-gray-100 text-gray-800'
+
+                                        }`}>
+                                            {req.Status}
+                                        </span>
+                                    </TableCell>
+                                </TableRow>
+                                
+                                {/* Expanded row with budget details */}
+                                {expandedRow === req.RequisitionID && (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="p-0 border-b">
+                                            <div className="overflow-hidden transition-all duration-300 ease-in-out" 
+                                                 style={{ maxHeight: expandedRow === req.RequisitionID ? '2000px' : '0' }}>
+                                                <div className="bg-muted/20 p-4">
+                                                    <div className="flex flex-row gap-4">
+                                                        {/* Left side - Monthly Budget Breakdown */}
+                                                        <div className='w-1/2'>
+                                                            <Card className='p-4'>
+                                                                <h4 className="font-semibold text-sm mb-2">Monthly Budget Breakdown</h4>
+                                                                {budgetLineDetails.expenditureData?.monthlyData ? (
+                                                                    <Table className="border-collapse">
+                                                                        <TableCaption>Monthly Budget Allocation for {new Date().getFullYear()}</TableCaption>
+                                                                        <TableHeader>
+                                                                            <TableRow>
+                                                                                <TableHead className="w-[100px]">Month</TableHead>
+                                                                                <TableHead className="text-right">Budget</TableHead>
+                                                                                <TableHead className="text-right">Expenditure</TableHead>
+                                                                                <TableHead className="text-right">Remaining</TableHead>
+                                                                                <TableHead className="text-right">Utilization</TableHead>
+                                                                            </TableRow>
+                                                                        </TableHeader>
+                                                                        <TableBody>
+                                                                            {budgetLineDetails.expenditureData.monthlyData.map((monthData, index) => {
+                                                                                const currentDate = new Date();
+                                                                                const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
+                                                                                const isCurrentMonth = monthData.month === currentMonth && monthData.year === currentDate.getFullYear();
+                                                                                
+                                                                                return (
+                                                                                    <TableRow 
+                                                                                        key={`${monthData.month}-${monthData.year}`}
+                                                                                        className={isCurrentMonth ? "bg-primary/10" : ""}
+                                                                                    >
+                                                                                        <TableCell className="font-medium">
+                                                                                            {isCurrentMonth && <span className="mr-1">▶</span>}
+                                                                                            {monthData.month.substring(0, 3)}
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right">
+                                                                                            {parseFloat(monthData.budgetedAmount || 0).toLocaleString()}
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right">
+                                                                                            {parseFloat(monthData.totalExpenditureAmount || 0).toLocaleString()}
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right">
+                                                                                            {parseFloat(monthData.remainingBudget || 0).toLocaleString()}
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right">
+                                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                                                monthData.utilizationPercentage > 90 ? 'bg-red-100 text-red-800' :
+                                                                                                monthData.utilizationPercentage > 70 ? 'bg-yellow-100 text-yellow-800' :
+                                                                                                'bg-green-100 text-green-800'
+                                                                                            }`}>
+                                                                                                {monthData.utilizationPercentage}%
+                                                                                            </span>
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                );
+                                                                            })}
+                                                                        </TableBody>
+                                                                    </Table>
+                                                                ) : (
+                                                                    <div className="text-center py-4 bg-background/50 rounded-lg">
+                                                                        Monthly data not available
+                                                                    </div>
+                                                                )}
+                                                            </Card>
+                                                        </div>
+                                                        
+                                                        {/* Right side - Budget Information and Actions */}
+                                                        <div className='flex flex-col w-1/2 space-y-4'>
+                                                            {/* Budget Line Information */}
+                                                            <Card className='p-4'>
+                                                                <h4 className="font-semibold text-sm mb-2">Budget Line Information</h4>
+                                                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                                                    <div className="font-medium">Budget Line:</div>
+                                                                    <div>{budgetLineDetails.expenditureData?.budgetLine?.id || budgetLineDetails.budgetLine?.BudgetLineName || 'N/A'}</div>
+                                                                    
+                                                                    <div className="font-medium">Total Budget:</div>
+                                                                    <div>{parseFloat(budgetLineDetails.expenditureData?.budgetLine?.totalBudgetedAmount || budgetLineDetails.budgetLine?.TotalBudgetedAmount || 0).toLocaleString()} FCFA</div>
+                                                                    
+                                                                    <div className="font-medium">Available Budget:</div>
+                                                                    <div>{parseFloat(budgetLineDetails.expenditureData?.availableBudget || 0).toLocaleString()} FCFA</div>
+                                                                    
+                                                                    <div className="font-medium">Budget Year:</div>
+                                                                    <div>{budgetLineDetails.expenditureData?.budgetLine?.year || new Date().getFullYear()}</div>
+                                                                    
+                                                                    <div className="font-medium">Cost Unit:</div>
+                                                                    <div>{budgetLineDetails.expenditureData?.budgetLine?.costUnit?.name || 'N/A'}</div>
+                                                                </div>
+                                                            </Card>
+                                                            
+                                                            {/* Budget Impact Analysis */}
+                                                            <Card className='p-4'>
+                                                                <h4 className="font-semibold text-sm mb-2">Budget Impact Analysis</h4>
+                                                                <div className="text-sm">
+                                                                    {(() => {
+                                                                        // Get current date and month
+                                                                        const currentDate = new Date();
+                                                                        const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
+                                                                        
+                                                                        // Find current month data
+                                                                        const currentMonthData = budgetLineDetails.expenditureData?.monthlyData?.find(
+                                                                            m => m.month === currentMonth && m.year === currentDate.getFullYear()
+                                                                        );
+                                                                        
+                                                                        const requisitionAmount = parseFloat(req.AmountRequested || 0);
+                                                                        const availableBudget = parseFloat(budgetLineDetails.expenditureData?.availableBudget || 0);
+                                                                        const monthlyBudget = parseFloat(currentMonthData?.remainingBudget || 0);
+                                                                        
+                                                                        let impactAnalysis = '';
+                                                                        let impactClass = '';
+                                                                        
+                                                                        // Different analysis based on requisition status
+                                                                        if (req.Status === 'Approved' || req.Status === 'Completed') {
+                                                                            // For approved/completed requisitions
+                                                                            impactAnalysis = `✓ This requisition has been approved and recorded as an expenditure of ${requisitionAmount.toLocaleString()} FCFA against the budget.`;
+                                                                            impactClass = 'text-blue-600 font-medium';
+                                                                        } else if (req.Status === 'Rejected') {
+                                                                            // For rejected requisitions
+                                                                            impactAnalysis = `✗ This requisition was rejected and has no impact on the budget.`;
+                                                                            impactClass = 'text-gray-600 font-medium';
+                                                                        } else if (req.Status === 'Forwarded') {
+                                                                            // For forwarded requisitions
+                                                                            impactAnalysis = `→ This requisition has been forwarded for higher approval and is pending final decision.`;
+                                                                            impactClass = 'text-purple-600 font-medium';
+                                                                        } else {
+                                                                            // For pending requisitions - original analysis logic
+                                                                            if (requisitionAmount > availableBudget) {
+                                                                                impactAnalysis = `⚠️ Warning: This requisition exceeds the available budget by ${(requisitionAmount - availableBudget).toLocaleString()} FCFA. Approving this requisition will result in a budget overrun.`;
+                                                                                impactClass = 'text-red-600 font-medium';
+                                                                            } else if (requisitionAmount > monthlyBudget && currentMonthData) {
+                                                                                impactAnalysis = `⚠️ Note: This requisition exceeds the current month's remaining budget by ${(requisitionAmount - monthlyBudget).toLocaleString()} FCFA, but is within the total available budget. Consider if this expense can be deferred to a future month.`;
+                                                                                impactClass = 'text-amber-600 font-medium';
+                                                                            } else {
+                                                                                impactAnalysis = `✅ This requisition is within budget limits. After approval, the remaining budget will be ${(availableBudget - requisitionAmount).toLocaleString()} FCFA.`;
+                                                                                impactClass = 'text-green-600 font-medium';
+                                                                            }
+                                                                        }
+                                                                        
+                                                                        return <p className={impactClass}>{impactAnalysis}</p>;
+                                                                    })()}
+                                                                </div>
+                                                            </Card>
+                                                            
+                                                            {/* Action buttons for pending requisitions */}
+                                                            {req.Status === 'Pending' && canManageRequisitions() && (
+                                                                <Card className='p-4'>
+                                                                    <h4 className="font-semibold text-sm mb-2">Actions</h4>
+                                                                    <div className="flex flex-col space-y-3">
+                                                                        <div className="flex space-x-2">
+                                                                            <Button 
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleApproveRequisition(req.RequisitionID);
+                                                                                }}
+                                                                                className="bg-green-600 hover:bg-green-700 w-1/2"
+                                                                            >
+                                                                                Approve Requisition
+                                                                            </Button>
+                                                                            
+                                                                            <Button 
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleForwardRequisition(req.RequisitionID);
+                                                                                }}
+                                                                                className="bg-blue-600 hover:bg-blue-700 w-1/2"
+                                                                            >
+                                                                                Forward Requisition
+                                                                            </Button>
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex space-x-2">
+                                                                            <Input
+                                                                                placeholder="Reason for rejection"
+                                                                                value={rejectionReason}
+                                                                                onChange={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setRejectionReason(e.target.value);
+                                                                                }}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                className="flex-1"
+                                                                            />
+                                                                            <Button 
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleRejectRequisition(req.RequisitionID);
+                                                                                }}
+                                                                                className="bg-red-600 hover:bg-red-700"
+                                                                                disabled={!rejectionReason.trim()}
+                                                                            >
+                                                                                Reject
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </Card>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </React.Fragment>
                         ))
                     ) : (
                         // Show empty state
