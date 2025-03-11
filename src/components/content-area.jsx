@@ -95,6 +95,10 @@ function ContentArea({ activeItem }) {
             return <div><CreateMeasuringUnit /></div>
         case 'View Measuring Units':
             return <div><ViewAllMeasuringUnits /></div>
+        case 'Create New LPO':
+            return <div><ViewRequisitions /></div>;
+        case 'View LPOs':
+            return <div>This is View LPOs</div>;
         default:
             return <div>Unknown item: {activeItem.title} and {user.estateCode}</div>;
     }

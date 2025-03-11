@@ -39,13 +39,20 @@ function ViewRequisitions() {
     const [expenditureHistory, setExpenditureHistory] = useState(null);
     const [yearlyExpenditures, setYearlyExpenditures] = useState(null);
     const [monthlyExpenditures, setMonthlyExpenditures] = useState(null);
+    const [externalUnitPrice, setExternalUnitPrice] = useState('');
+    const [totalExternalAmount, setTotalExternalAmount] = useState(0);
+    const [lpoComments, setLpoComments] = useState('');
+    const [raisingLPO, setRaisingLPO] = useState(false);
+    const [lpoRaised, setLpoRaised] = useState(false);
     
     // Status options for filtering
     const statusOptions = [
         { value: 'all', label: 'All Statuses' },
         { value: 'Pending', label: 'Pending' },
         { value: 'Approved', label: 'Approved' },
-        { value: 'Rejected', label: 'Rejected' }
+        { value: 'Rejected', label: 'Rejected' },
+        { value: 'Forwarded', label: 'Forwarded' },
+        { value: 'Completed', label: 'Completed' }
     ];
 
     // Fetch estates on component mount
@@ -75,7 +82,12 @@ function ViewRequisitions() {
                 headers: {
                     Authorization: `Bearer ${user.token}`,
                 },
-                params: { page: currentPage, limit: 10, estateId, status }
+                params: { 
+                    page: currentPage, 
+                    limit: 10, 
+                    estateId, 
+                    status: status === 'all' ? '' : status // Convert 'all' back to empty string for API
+                }
             });
             
             console.log("Requisitions response:", response.data);
@@ -391,6 +403,54 @@ function ViewRequisitions() {
         }
     };
 
+    // In your component, add this useEffect to handle usercode 5 restrictions
+    useEffect(() => {
+        // If user has usercode 5, restrict to only forwarded requisitions
+        if (user && user.roleCode === 5) {
+            setStatus('Forwarded');
+        }
+    }, [user]);
+
+    // Add a function to handle raising an LPO
+    const handleRaiseLPO = async (requisitionId, externalUnitPrice, comments) => {
+        setRaisingLPO(true);
+        try {
+            const response = await API.post('/lpo/create-lpo', 
+                { 
+                    requisitionId,
+                    externalUnitCost: parseFloat(externalUnitPrice),
+                    comments
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`,
+                    }
+                }
+            );
+            
+            if (response.status === 200) {
+                toast.success("LPO raised successfully");
+                setExternalUnitPrice('');
+                setLpoComments('');
+                setLpoRaised(true);
+                
+                // Reset the success state after 3 seconds
+                setTimeout(() => {
+                    setLpoRaised(false);
+                }, 3000);
+                
+                fetchRequisitions();
+            } else {
+                toast.error("Failed to raise LPO");
+            }
+        } catch (error) {
+            console.error("Error raising LPO:", error);
+            toast.error("Failed to raise LPO");
+        } finally {
+            setRaisingLPO(false);
+        }
+    };
+
     return (
         <Card className="">
             <h3 className='mb-4 font-bold text-xl p-4'>View Requisitions</h3>
@@ -448,6 +508,7 @@ function ViewRequisitions() {
                     <Select
                         value={status}
                         onValueChange={(value) => setStatus(value)}
+                        disabled={user && user.roleCode === 5}
                     >
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select Status" />
@@ -559,7 +620,7 @@ function ViewRequisitions() {
                                                     <div className="flex flex-row gap-4">
                                                         {/* Left side - Monthly Budget Breakdown */}
                                                         <div className='w-1/2'>
-                                                            <Card className='p-4'>
+                                                            <Card className='p-4 h-full'>
                                                                 <h4 className="font-semibold text-sm mb-2">Monthly Budget Breakdown</h4>
                                                                 {budgetLineDetails.expenditureData?.monthlyData ? (
                                                                     <Table className="border-collapse">
@@ -695,7 +756,7 @@ function ViewRequisitions() {
                                                                 </div>
                                                             </Card>
                                                             
-                                                            {/* Action buttons for pending requisitions */}
+                                                            {/* Action buttons based on user role and requisition status */}
                                                             {req.Status === 'Pending' && canManageRequisitions() && (
                                                                 <Card className='p-4'>
                                                                     <h4 className="font-semibold text-sm mb-2">Actions</h4>
@@ -744,6 +805,85 @@ function ViewRequisitions() {
                                                                                 Reject
                                                                             </Button>
                                                                         </div>
+                                                                    </div>
+                                                                </Card>
+                                                            )}
+
+                                                            {/* LPO button for usercode 5 and forwarded requisitions */}
+                                                            {req.Status === 'Forwarded' && user.roleCode === 5 && (
+                                                                <Card className='p-4'>
+                                                                    <h4 className="font-semibold text-sm mb-2">Actions</h4>
+                                                                    <div className="flex flex-col space-y-3">
+                                                                        <div className="grid grid-cols-2 gap-3">
+                                                                            <div>
+                                                                                <label className="text-sm font-medium mb-1 block">External Unit Price (FCFA)</label>
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    placeholder="Enter unit price"
+                                                                                    value={externalUnitPrice || ''}
+                                                                                    onChange={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setExternalUnitPrice(e.target.value);
+                                                                                    }}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    className="w-full"
+                                                                                />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="text-sm font-medium mb-1 block">Total Amount</label>
+                                                                                <div className="h-10 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center">
+                                                                                    {externalUnitPrice 
+                                                                                        ? (parseFloat(externalUnitPrice) * parseFloat(req.QuantityRequested || 1)).toLocaleString() 
+                                                                                        : '0'} FCFA
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        <div>
+                                                                            <label className="text-sm font-medium mb-1 block">Additional Comments</label>
+                                                                            <textarea
+                                                                                placeholder="Enter any additional information for the LPO"
+                                                                                value={lpoComments || ''}
+                                                                                onChange={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setLpoComments(e.target.value);
+                                                                                }}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                                                                            />
+                                                                        </div>
+                                                                        
+                                                                        <Button 
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleRaiseLPO(req.RequisitionID, externalUnitPrice, lpoComments);
+                                                                            }}
+                                                                            className={`w-full mt-2 ${
+                                                                                lpoRaised 
+                                                                                    ? "bg-green-600 hover:bg-green-700" 
+                                                                                    : "bg-purple-600 hover:bg-purple-700"
+                                                                            }`}
+                                                                            disabled={!externalUnitPrice || raisingLPO}
+                                                                        >
+                                                                            {raisingLPO ? (
+                                                                                <>
+                                                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                    </svg>
+                                                                                    Processing...
+                                                                                </>
+                                                                            ) : lpoRaised ? (
+                                                                                <>
+                                                                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                                                                    </svg>
+                                                                                    LPO Raised Successfully
+                                                                                </>
+                                                                            ) : (
+                                                                                "Raise LPO"
+                                                                            )}
+                                                                        </Button>
                                                                     </div>
                                                                 </Card>
                                                             )}
