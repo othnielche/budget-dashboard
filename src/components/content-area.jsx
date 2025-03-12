@@ -20,6 +20,7 @@ import ViewAllMeasuringUnits from './sidebar/subMenus/measuring-unit/view-all-me
 import Budget from './sidebar/subMenus/budget/create/budget';
 import ViewBudgets from './sidebar/subMenus/budget/view/view-budget';
 import ViewRequisitions from './requisition/view-requisitions';
+import ViewLPOs from './lpo/view-lpos';
 function ContentArea({ activeItem }) {
     const {user} = useContext(AuthContext)
     if (!activeItem) return <div>This is the CDC Budget Application</div>;
@@ -98,7 +99,7 @@ function ContentArea({ activeItem }) {
         case 'Create New LPO':
             return <div><ViewRequisitions /></div>;
         case 'View LPOs':
-            return <div>This is View LPOs</div>;
+            return <div><ViewLPOs /></div>;
         default:
             return <div>Unknown item: {activeItem.title} and {user.estateCode}</div>;
     }

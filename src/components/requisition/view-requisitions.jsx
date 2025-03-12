@@ -16,6 +16,19 @@ import { Input } from "@/components/ui/input";
 import Fuse from 'fuse.js';
 import { toast } from 'sonner';
 
+// Import the AlertDialog components
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 function ViewRequisitions() {
 
     const { user } = useContext(AuthContext);
@@ -54,6 +67,12 @@ function ViewRequisitions() {
         { value: 'Forwarded', label: 'Forwarded' },
         { value: 'Completed', label: 'Completed' }
     ];
+
+    const [actionType, setActionType] = useState(null);
+    const [selectedRequisitionId, setSelectedRequisitionId] = useState(null);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [confirmDialogMessage, setConfirmDialogMessage] = useState('');
+    const [confirmDialogTitle, setConfirmDialogTitle] = useState('');
 
     // Fetch estates on component mount
     useEffect(() => {
@@ -159,8 +178,7 @@ function ViewRequisitions() {
             const fuse = new Fuse(searchableData, fuseOptions);
             setFuse(fuse);
         }
-    }, [requisitions, users]); // Add users as a dependency since getUserName depends on it
-
+    }, [requisitions, users]);
     // Modify the search function to preserve the original requisition data
     const handleSearch = (term) => {
         if (!term.trim()) {
@@ -328,11 +346,46 @@ function ViewRequisitions() {
         }
     };
     
-    // Check if user has permission to manage requisitions
-    const canManageRequisitions = () => {
-        return user && [1, 2, 3].includes(user.roleCode);
+    // Add a helper function to check if user is an admin
+    const isAdmin = () => {
+        return user && user.roleCode === 1;
     };
-    
+
+    // Update the useEffect for status filtering to exempt admins
+    useEffect(() => {
+        // If user has usercode 5 and is not an admin, restrict to only forwarded requisitions
+        if (user && user.roleCode === 5 && !isAdmin()) {
+            setStatus('Forwarded');
+        }
+    }, [user]);
+
+    // Update the status dropdown to be disabled only for non-admin usercode 5
+    <div className="col-span-2">
+        <label className="text-sm font-medium mb-1 block">Filter by Status</label>
+        <Select
+            value={status}
+            onValueChange={(value) => setStatus(value)}
+            disabled={user && user.roleCode === 5 && !isAdmin()} // Only disable for non-admin usercode 5
+        >
+            <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+                {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    </div>
+
+    // Update the canManageRequisitions function to include admins
+    const canManageRequisitions = () => {
+        // Allow admins (roleCode 1) or users with appropriate permissions
+        return isAdmin() || (user && (user.roleCode === 2 || user.roleCode === 3 || user.roleCode === 4));
+    };
+
     // Handle requisition approval
     const handleApproveRequisition = async (requisitionId) => {
         try {
@@ -403,14 +456,6 @@ function ViewRequisitions() {
         }
     };
 
-    // In your component, add this useEffect to handle usercode 5 restrictions
-    useEffect(() => {
-        // If user has usercode 5, restrict to only forwarded requisitions
-        if (user && user.roleCode === 5) {
-            setStatus('Forwarded');
-        }
-    }, [user]);
-
     // Add a function to handle raising an LPO
     const handleRaiseLPO = async (requisitionId, externalUnitPrice, comments) => {
         setRaisingLPO(true);
@@ -451,485 +496,568 @@ function ViewRequisitions() {
         }
     };
 
+    // Update the action handlers to show confirmation dialogs
+    const initiateApproveRequisition = (e, requisitionId) => {
+        e.stopPropagation();
+        setActionType('approve');
+        setSelectedRequisitionId(requisitionId);
+        setConfirmDialogTitle('Approve Requisition');
+        setConfirmDialogMessage('Are you sure you want to approve this requisition? This action cannot be undone.');
+        setShowConfirmDialog(true);
+    };
+
+    const initiateForwardRequisition = (e, requisitionId) => {
+        e.stopPropagation();
+        setActionType('forward');
+        setSelectedRequisitionId(requisitionId);
+        setConfirmDialogTitle('Forward Requisition');
+        setConfirmDialogMessage('Are you sure you want to forward this requisition for higher approval? This action cannot be undone.');
+        setShowConfirmDialog(true);
+    };
+
+    const initiateRejectRequisition = (e, requisitionId) => {
+        e.stopPropagation();
+        if (!rejectionReason.trim()) {
+            toast.error("Please provide a reason for rejection");
+            return;
+        }
+        setActionType('reject');
+        setSelectedRequisitionId(requisitionId);
+        setConfirmDialogTitle('Reject Requisition');
+        setConfirmDialogMessage(`Are you sure you want to reject this requisition with reason: "${rejectionReason}"? This action cannot be undone.`);
+        setShowConfirmDialog(true);
+    };
+
+    const initiateRaiseLPO = (e, requisitionId, externalUnitPrice, comments) => {
+        e.stopPropagation();
+        if (!externalUnitPrice) {
+            toast.error("Please enter an external unit price");
+            return;
+        }
+        setActionType('raiseLPO');
+        setSelectedRequisitionId(requisitionId);
+        setConfirmDialogTitle('Raise LPO');
+        setConfirmDialogMessage(`Are you sure you want to raise an LPO for this requisition with an external unit price of ${parseFloat(externalUnitPrice).toLocaleString()} FCFA? This action cannot be undone.`);
+        setShowConfirmDialog(true);
+    };
+
+    // Function to handle confirmed actions
+    const handleConfirmedAction = async () => {
+        switch (actionType) {
+            case 'approve':
+                await handleApproveRequisition(selectedRequisitionId);
+                break;
+            case 'forward':
+                await handleForwardRequisition(selectedRequisitionId);
+                break;
+            case 'reject':
+                await handleRejectRequisition(selectedRequisitionId);
+                break;
+            case 'raiseLPO':
+                await handleRaiseLPO(selectedRequisitionId, externalUnitPrice, lpoComments);
+                break;
+            default:
+                break;
+        }
+        setShowConfirmDialog(false);
+    };
+
     return (
-        <Card className="">
-            <h3 className='mb-4 font-bold text-xl p-4'>View Requisitions</h3>
-            
-            <div className="grid grid-cols-12 gap-4 mb-6 p-4">
-                {/* Estate Selection */}
-                <div className="col-span-3">
-                    <label className="text-sm font-medium mb-1 block">Select Estate</label>
-                    <Select
-                        value={estateId}
-                        onValueChange={(value) => setEstateId(value)}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select an Estate" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {estates.map((estate) => (
-                                <SelectItem key={estate.EstateID} value={estate.EstateID}>
-                                    {estate.EstateName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+        <>
+            <Card className="">
+                <h3 className='mb-4 font-bold text-xl p-4'>View Requisitions</h3>
                 
-                {/* Add Search Input */}
-                <div className="col-span-5">
-                    <label className="text-sm font-medium mb-1 block">Search Requisitions</label>
-                    <div className="relative">
-                        <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search by ID, item, status, or raised by..."
-                            value={searchTerm}
-                            onChange={handleSearchInputChange}
-                            className="w-full pl-8"
-                            ref={searchInputRef}
-                        />
-                        {searchTerm && (
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                                onClick={resetSearch}
-                            >
-                                Clear
-                            </Button>
-                        )}
+                <div className="grid grid-cols-12 gap-4 mb-6 p-4">
+                    {/* Estate Selection */}
+                    <div className="col-span-3">
+                        <label className="text-sm font-medium mb-1 block">Select Estate</label>
+                        <Select
+                            value={estateId}
+                            onValueChange={(value) => setEstateId(value)}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select an Estate" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {estates.map((estate) => (
+                                    <SelectItem key={estate.EstateID} value={estate.EstateID}>
+                                        {estate.EstateName}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    
+                    {/* Add Search Input */}
+                    <div className="col-span-5">
+                        <label className="text-sm font-medium mb-1 block">Search Requisitions</label>
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search by ID, item, status, or raised by..."
+                                value={searchTerm}
+                                onChange={handleSearchInputChange}
+                                className="w-full pl-8"
+                                ref={searchInputRef}
+                            />
+                            {searchTerm && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                                    onClick={resetSearch}
+                                >
+                                    Clear
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* Status Selection */}
+                    <div className="col-span-2">
+                        <label className="text-sm font-medium mb-1 block">Filter by Status</label>
+                        <Select
+                            value={status}
+                            onValueChange={(value) => setStatus(value)}
+                            disabled={user && user.roleCode === 5 && !isAdmin()} // Only disable for non-admin usercode 5
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {statusOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    
+                    {/* Fetch Button */}
+                    <div className="col-span-2 flex items-end">
+                        <Button 
+                            onClick={fetchRequisitions} 
+                            disabled={loading || !estateId} 
+                            className="w-full"
+                        >
+                            {loading ? (
+                                <>
+                                    <Skeleton className="h-4 w-4 mr-2 rounded-full" />
+                                    Loading...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Fetch Requisitions
+                                </>
+                            )}
+                        </Button>
                     </div>
                 </div>
                 
-                {/* Status Selection */}
-                <div className="col-span-2">
-                    <label className="text-sm font-medium mb-1 block">Filter by Status</label>
-                    <Select
-                        value={status}
-                        onValueChange={(value) => setStatus(value)}
-                        disabled={user && user.roleCode === 5}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {statusOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                
-                {/* Fetch Button */}
-                <div className="col-span-2 flex items-end">
-                    <Button 
-                        onClick={fetchRequisitions} 
-                        disabled={loading || !estateId} 
-                        className="w-full"
-                    >
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Item</TableHead>
+                            <TableHead>Quantity</TableHead>
+                            <TableHead>Unit Cost</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Raised By</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {loading ? (
-                            <>
-                                <Skeleton className="h-4 w-4 mr-2 rounded-full" />
-                                Loading...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Fetch Requisitions
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </div>
-            
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Unit Cost</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Raised By</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading ? (
-                        // Show loading state
-                        Array(5).fill(0).map((_, index) => (
-                            <TableRow key={index}>
-                                <TableCell colSpan={8}>
-                                    <Skeleton className="h-10 w-full" />
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : requisitions.length > 0 ? (
-                        // Show requisition data with expandable rows
-                        requisitions.map((req) => (
-                            <React.Fragment key={req.RequisitionID}>
-                                <TableRow 
-                                    className={`hover:bg-muted/50 transition-colors cursor-pointer ${
-                                        expandedRow === req.RequisitionID ? 'bg-muted/50' : ''
-                                    }`}
-                                    onClick={() => {
-                                        toggleRowExpansion(req.RequisitionID);
-                                        setRejectionReason('');
-                                    }}
-                                >
-                                    <TableCell>{req.RequisitionID}</TableCell>
-                                    <TableCell>{req.Item?.ItemName || 'N/A'}</TableCell>
-                                    <TableCell>{req.QuantityRequested}</TableCell>
-                                    <TableCell>{parseFloat(req.Item?.UnitCost || 0).toLocaleString()} FCFA</TableCell>
-                                    <TableCell>{parseFloat(req.AmountRequested || 0).toLocaleString()} FCFA</TableCell>
-                                    <TableCell>{getUserName(req.RaisedBy)}</TableCell>
-                                    <TableCell>
-                                        {new Date(req.DataRaised || req.createdAt).toLocaleString('en-GB', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            req.Status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                            req.Status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                            req.Status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                            req.Status === 'Forwarded' ? 'bg-blue-100 text-blue-800' :
-                                            'bg-gray-100 text-gray-800'
-
-                                        }`}>
-                                            {req.Status}
-                                        </span>
+                            // Show loading state
+                            Array(5).fill(0).map((_, index) => (
+                                <TableRow key={index}>
+                                    <TableCell colSpan={8}>
+                                        <Skeleton className="h-10 w-full" />
                                     </TableCell>
                                 </TableRow>
-                                
-                                {/* Expanded row with budget details */}
-                                {expandedRow === req.RequisitionID && (
-                                    <TableRow>
-                                        <TableCell colSpan={8} className="p-0 border-b">
-                                            <div className="overflow-hidden transition-all duration-300 ease-in-out" 
-                                                 style={{ maxHeight: expandedRow === req.RequisitionID ? '2000px' : '0' }}>
-                                                <div className="bg-muted/20 p-4">
-                                                    <div className="flex flex-row gap-4">
-                                                        {/* Left side - Monthly Budget Breakdown */}
-                                                        <div className='w-1/2'>
-                                                            <Card className='p-4 h-full'>
-                                                                <h4 className="font-semibold text-sm mb-2">Monthly Budget Breakdown</h4>
-                                                                {budgetLineDetails.expenditureData?.monthlyData ? (
-                                                                    <Table className="border-collapse">
-                                                                        <TableCaption>Monthly Budget Allocation for {new Date().getFullYear()}</TableCaption>
-                                                                        <TableHeader>
-                                                                            <TableRow>
-                                                                                <TableHead className="w-[100px]">Month</TableHead>
-                                                                                <TableHead className="text-right">Budget</TableHead>
-                                                                                <TableHead className="text-right">Expenditure</TableHead>
-                                                                                <TableHead className="text-right">Remaining</TableHead>
-                                                                                <TableHead className="text-right">Utilization</TableHead>
-                                                                            </TableRow>
-                                                                        </TableHeader>
-                                                                        <TableBody>
-                                                                            {budgetLineDetails.expenditureData.monthlyData.map((monthData, index) => {
-                                                                                const currentDate = new Date();
-                                                                                const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
-                                                                                const isCurrentMonth = monthData.month === currentMonth && monthData.year === currentDate.getFullYear();
-                                                                                
-                                                                                return (
-                                                                                    <TableRow 
-                                                                                        key={`${monthData.month}-${monthData.year}`}
-                                                                                        className={isCurrentMonth ? "bg-primary/10" : ""}
-                                                                                    >
-                                                                                        <TableCell className="font-medium">
-                                                                                            {isCurrentMonth && <span className="mr-1">▶</span>}
-                                                                                            {monthData.month.substring(0, 3)}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-right">
-                                                                                            {parseFloat(monthData.budgetedAmount || 0).toLocaleString()}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-right">
-                                                                                            {parseFloat(monthData.totalExpenditureAmount || 0).toLocaleString()}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-right">
-                                                                                            {parseFloat(monthData.remainingBudget || 0).toLocaleString()}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-right">
-                                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                                                                monthData.utilizationPercentage > 90 ? 'bg-red-100 text-red-800' :
-                                                                                                monthData.utilizationPercentage > 70 ? 'bg-yellow-100 text-yellow-800' :
-                                                                                                'bg-green-100 text-green-800'
-                                                                                            }`}>
-                                                                                                {monthData.utilizationPercentage}%
-                                                                                            </span>
-                                                                                        </TableCell>
-                                                                                    </TableRow>
-                                                                                );
-                                                                            })}
-                                                                        </TableBody>
-                                                                    </Table>
-                                                                ) : (
-                                                                    <div className="text-center py-4 bg-background/50 rounded-lg">
-                                                                        Monthly data not available
-                                                                    </div>
-                                                                )}
-                                                            </Card>
-                                                        </div>
-                                                        
-                                                        {/* Right side - Budget Information and Actions */}
-                                                        <div className='flex flex-col w-1/2 space-y-4'>
-                                                            {/* Budget Line Information */}
-                                                            <Card className='p-4'>
-                                                                <h4 className="font-semibold text-sm mb-2">Budget Line Information</h4>
-                                                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                                                    <div className="font-medium">Budget Line:</div>
-                                                                    <div>{budgetLineDetails.expenditureData?.budgetLine?.id || budgetLineDetails.budgetLine?.BudgetLineName || 'N/A'}</div>
-                                                                    
-                                                                    <div className="font-medium">Total Budget:</div>
-                                                                    <div>{parseFloat(budgetLineDetails.expenditureData?.budgetLine?.totalBudgetedAmount || budgetLineDetails.budgetLine?.TotalBudgetedAmount || 0).toLocaleString()} FCFA</div>
-                                                                    
-                                                                    <div className="font-medium">Available Budget:</div>
-                                                                    <div>{parseFloat(budgetLineDetails.expenditureData?.availableBudget || 0).toLocaleString()} FCFA</div>
-                                                                    
-                                                                    <div className="font-medium">Budget Year:</div>
-                                                                    <div>{budgetLineDetails.expenditureData?.budgetLine?.year || new Date().getFullYear()}</div>
-                                                                    
-                                                                    <div className="font-medium">Cost Unit:</div>
-                                                                    <div>{budgetLineDetails.expenditureData?.budgetLine?.costUnit?.name || 'N/A'}</div>
-                                                                </div>
-                                                            </Card>
+                            ))
+                        ) : requisitions.length > 0 ? (
+                            // Show requisition data with expandable rows
+                            requisitions.map((req) => (
+                                <React.Fragment key={req.RequisitionID}>
+                                    <TableRow 
+                                        className={`hover:bg-muted/50 transition-colors cursor-pointer ${
+                                            expandedRow === req.RequisitionID ? 'bg-muted/50' : ''
+                                        }`}
+                                        onClick={() => {
+                                            toggleRowExpansion(req.RequisitionID);
+                                            setRejectionReason('');
+                                        }}
+                                    >
+                                        <TableCell>{req.RequisitionID}</TableCell>
+                                        <TableCell>{req.Item?.ItemName || 'N/A'}</TableCell>
+                                        <TableCell>{req.QuantityRequested}</TableCell>
+                                        <TableCell>{parseFloat(req.Item?.UnitCost || 0).toLocaleString()} FCFA</TableCell>
+                                        <TableCell>{parseFloat(req.AmountRequested || 0).toLocaleString()} FCFA</TableCell>
+                                        <TableCell>{getUserName(req.RaisedBy)}</TableCell>
+                                        <TableCell>
+                                            {new Date(req.DataRaised || req.createdAt).toLocaleString('en-GB', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                req.Status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                req.Status === 'Approved' ? 'bg-green-100 text-green-800' :
+                                                req.Status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                                req.Status === 'Forwarded' ? 'bg-blue-100 text-blue-800' :
+                                                'bg-gray-100 text-gray-800'
+
+                                            }`}>
+                                                {req.Status}
+                                            </span>
+                                        </TableCell>
+                                    </TableRow>
+                                    
+                                    {/* Expanded row with budget details */}
+                                    {expandedRow === req.RequisitionID && (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="p-0 border-b">
+                                                <div className="overflow-hidden transition-all duration-300 ease-in-out" 
+                                                     style={{ maxHeight: expandedRow === req.RequisitionID ? '2000px' : '0' }}>
+                                                    <div className="bg-muted/20 p-4">
+                                                        <div className="flex flex-row gap-4">
+                                                            {/* Left side - Monthly Budget Breakdown */}
+                                                            <div className='w-1/2'>
+                                                                <Card className='p-4 h-full'>
+                                                                    <h4 className="font-semibold text-sm mb-2">Monthly Budget Breakdown</h4>
+                                                                    {budgetLineDetails.expenditureData?.monthlyData ? (
+                                                                        <Table className="border-collapse">
+                                                                            <TableCaption>Monthly Budget Allocation for {new Date().getFullYear()}</TableCaption>
+                                                                            <TableHeader>
+                                                                                <TableRow>
+                                                                                    <TableHead className="w-[100px]">Month</TableHead>
+                                                                                    <TableHead className="text-right">Budget</TableHead>
+                                                                                    <TableHead className="text-right">Expenditure</TableHead>
+                                                                                    <TableHead className="text-right">Remaining</TableHead>
+                                                                                    <TableHead className="text-right">Utilization</TableHead>
+                                                                                </TableRow>
+                                                                            </TableHeader>
+                                                                            <TableBody>
+                                                                                {budgetLineDetails.expenditureData.monthlyData.map((monthData, index) => {
+                                                                                    const currentDate = new Date();
+                                                                                    const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
+                                                                                    const isCurrentMonth = monthData.month === currentMonth && monthData.year === currentDate.getFullYear();
+                                                                                    
+                                                                                    return (
+                                                                                        <TableRow 
+                                                                                            key={`${monthData.month}-${monthData.year}`}
+                                                                                            className={isCurrentMonth ? "bg-primary/10" : ""}
+                                                                                        >
+                                                                                            <TableCell className="font-medium">
+                                                                                                {isCurrentMonth && <span className="mr-1">▶</span>}
+                                                                                                {monthData.month.substring(0, 3)}
+                                                                                            </TableCell>
+                                                                                            <TableCell className="text-right">
+                                                                                                {parseFloat(monthData.budgetedAmount || 0).toLocaleString()}
+                                                                                            </TableCell>
+                                                                                            <TableCell className="text-right">
+                                                                                                {parseFloat(monthData.totalExpenditureAmount || 0).toLocaleString()}
+                                                                                            </TableCell>
+                                                                                            <TableCell className="text-right">
+                                                                                                {parseFloat(monthData.remainingBudget || 0).toLocaleString()}
+                                                                                            </TableCell>
+                                                                                            <TableCell className="text-right">
+                                                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                                                    monthData.utilizationPercentage > 90 ? 'bg-red-100 text-red-800' :
+                                                                                                    monthData.utilizationPercentage > 70 ? 'bg-yellow-100 text-yellow-800' :
+                                                                                                    'bg-green-100 text-green-800'
+                                                                                                }`}>
+                                                                                                    {monthData.utilizationPercentage}%
+                                                                                                </span>
+                                                                                            </TableCell>
+                                                                                        </TableRow>
+                                                                                    );
+                                                                                })}
+                                                                            </TableBody>
+                                                                        </Table>
+                                                                    ) : (
+                                                                        <div className="text-center py-4 bg-background/50 rounded-lg">
+                                                                            Monthly data not available
+                                                                        </div>
+                                                                    )}
+                                                                </Card>
+                                                            </div>
                                                             
-                                                            {/* Budget Impact Analysis */}
-                                                            <Card className='p-4'>
-                                                                <h4 className="font-semibold text-sm mb-2">Budget Impact Analysis</h4>
-                                                                <div className="text-sm">
-                                                                    {(() => {
-                                                                        // Get current date and month
-                                                                        const currentDate = new Date();
-                                                                        const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
-                                                                        
-                                                                        // Find current month data
-                                                                        const currentMonthData = budgetLineDetails.expenditureData?.monthlyData?.find(
-                                                                            m => m.month === currentMonth && m.year === currentDate.getFullYear()
-                                                                        );
-                                                                        
-                                                                        const requisitionAmount = parseFloat(req.AmountRequested || 0);
-                                                                        const availableBudget = parseFloat(budgetLineDetails.expenditureData?.availableBudget || 0);
-                                                                        const monthlyBudget = parseFloat(currentMonthData?.remainingBudget || 0);
-                                                                        
-                                                                        let impactAnalysis = '';
-                                                                        let impactClass = '';
-                                                                        
-                                                                        // Different analysis based on requisition status
-                                                                        if (req.Status === 'Approved' || req.Status === 'Completed') {
-                                                                            // For approved/completed requisitions
-                                                                            impactAnalysis = `✓ This requisition has been approved and recorded as an expenditure of ${requisitionAmount.toLocaleString()} FCFA against the budget.`;
-                                                                            impactClass = 'text-blue-600 font-medium';
-                                                                        } else if (req.Status === 'Rejected') {
-                                                                            // For rejected requisitions
-                                                                            impactAnalysis = `✗ This requisition was rejected and has no impact on the budget.`;
-                                                                            impactClass = 'text-gray-600 font-medium';
-                                                                        } else if (req.Status === 'Forwarded') {
-                                                                            // For forwarded requisitions
-                                                                            impactAnalysis = `→ This requisition has been forwarded for higher approval and is pending final decision.`;
-                                                                            impactClass = 'text-purple-600 font-medium';
-                                                                        } else {
-                                                                            // For pending requisitions - original analysis logic
-                                                                            if (requisitionAmount > availableBudget) {
-                                                                                impactAnalysis = `⚠️ Warning: This requisition exceeds the available budget by ${(requisitionAmount - availableBudget).toLocaleString()} FCFA. Approving this requisition will result in a budget overrun.`;
-                                                                                impactClass = 'text-red-600 font-medium';
-                                                                            } else if (requisitionAmount > monthlyBudget && currentMonthData) {
-                                                                                impactAnalysis = `⚠️ Note: This requisition exceeds the current month's remaining budget by ${(requisitionAmount - monthlyBudget).toLocaleString()} FCFA, but is within the total available budget. Consider if this expense can be deferred to a future month.`;
-                                                                                impactClass = 'text-amber-600 font-medium';
-                                                                            } else {
-                                                                                impactAnalysis = `✅ This requisition is within budget limits. After approval, the remaining budget will be ${(availableBudget - requisitionAmount).toLocaleString()} FCFA.`;
-                                                                                impactClass = 'text-green-600 font-medium';
-                                                                            }
-                                                                        }
-                                                                        
-                                                                        return <p className={impactClass}>{impactAnalysis}</p>;
-                                                                    })()}
-                                                                </div>
-                                                            </Card>
-                                                            
-                                                            {/* Action buttons based on user role and requisition status */}
-                                                            {req.Status === 'Pending' && canManageRequisitions() && (
+                                                            {/* Right side - Budget Information and Actions */}
+                                                            <div className='flex flex-col w-1/2 space-y-4'>
+                                                                {/* Budget Line Information */}
                                                                 <Card className='p-4'>
-                                                                    <h4 className="font-semibold text-sm mb-2">Actions</h4>
-                                                                    <div className="flex flex-col space-y-3">
-                                                                        <div className="flex space-x-2">
-                                                                            <Button 
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleApproveRequisition(req.RequisitionID);
-                                                                                }}
-                                                                                className="bg-green-600 hover:bg-green-700 w-1/2"
-                                                                            >
-                                                                                Approve Requisition
-                                                                            </Button>
-                                                                            
-                                                                            <Button 
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleForwardRequisition(req.RequisitionID);
-                                                                                }}
-                                                                                className="bg-blue-600 hover:bg-blue-700 w-1/2"
-                                                                            >
-                                                                                Forward Requisition
-                                                                            </Button>
-                                                                        </div>
+                                                                    <h4 className="font-semibold text-sm mb-2">Budget Line Information</h4>
+                                                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                                                        <div className="font-medium">Budget Line:</div>
+                                                                        <div>{budgetLineDetails.expenditureData?.budgetLine?.id || budgetLineDetails.budgetLine?.BudgetLineName || 'N/A'}</div>
                                                                         
-                                                                        <div className="flex space-x-2">
-                                                                            <Input
-                                                                                placeholder="Reason for rejection"
-                                                                                value={rejectionReason}
-                                                                                onChange={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setRejectionReason(e.target.value);
-                                                                                }}
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                                className="flex-1"
-                                                                            />
-                                                                            <Button 
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleRejectRequisition(req.RequisitionID);
-                                                                                }}
-                                                                                className="bg-red-600 hover:bg-red-700"
-                                                                                disabled={!rejectionReason.trim()}
-                                                                            >
-                                                                                Reject
-                                                                            </Button>
-                                                                        </div>
+                                                                        <div className="font-medium">Total Budget:</div>
+                                                                        <div>{parseFloat(budgetLineDetails.expenditureData?.budgetLine?.totalBudgetedAmount || budgetLineDetails.budgetLine?.TotalBudgetedAmount || 0).toLocaleString()} FCFA</div>
+                                                                        
+                                                                        <div className="font-medium">Available Budget:</div>
+                                                                        <div>{parseFloat(budgetLineDetails.expenditureData?.availableBudget || 0).toLocaleString()} FCFA</div>
+                                                                        
+                                                                        <div className="font-medium">Budget Year:</div>
+                                                                        <div>{budgetLineDetails.expenditureData?.budgetLine?.year || new Date().getFullYear()}</div>
+                                                                        
+                                                                        <div className="font-medium">Cost Unit:</div>
+                                                                        <div>{budgetLineDetails.expenditureData?.budgetLine?.costUnit?.name || 'N/A'}</div>
                                                                     </div>
                                                                 </Card>
-                                                            )}
-
-                                                            {/* LPO button for usercode 5 and forwarded requisitions */}
-                                                            {req.Status === 'Forwarded' && user.roleCode === 5 && (
+                                                                
+                                                                {/* Budget Impact Analysis */}
                                                                 <Card className='p-4'>
-                                                                    <h4 className="font-semibold text-sm mb-2">Actions</h4>
-                                                                    <div className="flex flex-col space-y-3">
-                                                                        <div className="grid grid-cols-2 gap-3">
-                                                                            <div>
-                                                                                <label className="text-sm font-medium mb-1 block">External Unit Price (FCFA)</label>
+                                                                    <h4 className="font-semibold text-sm mb-2">Budget Impact Analysis</h4>
+                                                                    <div className="text-sm">
+                                                                        {(() => {
+                                                                            // Get current date and month
+                                                                            const currentDate = new Date();
+                                                                            const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
+                                                                            
+                                                                            // Find current month data
+                                                                            const currentMonthData = budgetLineDetails.expenditureData?.monthlyData?.find(
+                                                                                m => m.month === currentMonth && m.year === currentDate.getFullYear()
+                                                                            );
+                                                                            
+                                                                            const requisitionAmount = parseFloat(req.AmountRequested || 0);
+                                                                            const availableBudget = parseFloat(budgetLineDetails.expenditureData?.availableBudget || 0);
+                                                                            const monthlyBudget = parseFloat(currentMonthData?.remainingBudget || 0);
+                                                                            
+                                                                            let impactAnalysis = '';
+                                                                            let impactClass = '';
+                                                                            
+                                                                            // Different analysis based on requisition status
+                                                                            if (req.Status === 'Approved' || req.Status === 'Completed') {
+                                                                                // For approved/completed requisitions
+                                                                                impactAnalysis = `✓ This requisition has been approved and recorded as an expenditure of ${requisitionAmount.toLocaleString()} FCFA against the budget.`;
+                                                                                impactClass = 'text-blue-600 font-medium';
+                                                                            } else if (req.Status === 'Rejected') {
+                                                                                // For rejected requisitions
+                                                                                impactAnalysis = `✗ This requisition was rejected and has no impact on the budget.`;
+                                                                                impactClass = 'text-gray-600 font-medium';
+                                                                            } else if (req.Status === 'Forwarded') {
+                                                                                // For forwarded requisitions
+                                                                                impactAnalysis = `→ This requisition has been forwarded for higher approval and is pending final decision.`;
+                                                                                impactClass = 'text-purple-600 font-medium';
+                                                                            } else {
+                                                                                // For pending requisitions - original analysis logic
+                                                                                if (requisitionAmount > availableBudget) {
+                                                                                    impactAnalysis = `⚠️ Warning: This requisition exceeds the available budget by ${(requisitionAmount - availableBudget).toLocaleString()} FCFA. Approving this requisition will result in a budget overrun.`;
+                                                                                    impactClass = 'text-red-600 font-medium';
+                                                                                } else if (requisitionAmount > monthlyBudget && currentMonthData) {
+                                                                                    impactAnalysis = `⚠️ Note: This requisition exceeds the current month's remaining budget by ${(requisitionAmount - monthlyBudget).toLocaleString()} FCFA, but is within the total available budget. Consider if this expense can be deferred to a future month.`;
+                                                                                    impactClass = 'text-amber-600 font-medium';
+                                                                                } else {
+                                                                                    impactAnalysis = `✅ This requisition is within budget limits. After approval, the remaining budget will be ${(availableBudget - requisitionAmount).toLocaleString()} FCFA.`;
+                                                                                    impactClass = 'text-green-600 font-medium';
+                                                                                }
+                                                                            }
+                                                                            
+                                                                            return <p className={impactClass}>{impactAnalysis}</p>;
+                                                                        })()}
+                                                                    </div>
+                                                                </Card>
+                                                                
+                                                                {/* Action buttons based on user role and requisition status */}
+                                                                {req.Status === 'Pending' && (canManageRequisitions()) && (
+                                                                    <Card className='p-4'>
+                                                                        <h4 className="font-semibold text-sm mb-2">Actions</h4>
+                                                                        <div className="flex flex-col space-y-3">
+                                                                            <div className="flex space-x-2">
+                                                                                <Button 
+                                                                                    onClick={(e) => initiateApproveRequisition(e, req.RequisitionID)}
+                                                                                    className="bg-green-600 hover:bg-green-700 w-1/2"
+                                                                                >
+                                                                                    Approve Requisition
+                                                                                </Button>
+                                                                                
+                                                                                <Button 
+                                                                                    onClick={(e) => initiateForwardRequisition(e, req.RequisitionID)}
+                                                                                    className="bg-blue-600 hover:bg-blue-700 w-1/2"
+                                                                                >
+                                                                                    Forward Requisition
+                                                                                </Button>
+                                                                            </div>
+                                                                            
+                                                                            <div className="flex space-x-2">
                                                                                 <Input
-                                                                                    type="number"
-                                                                                    placeholder="Enter unit price"
-                                                                                    value={externalUnitPrice || ''}
+                                                                                    placeholder="Reason for rejection"
+                                                                                    value={rejectionReason}
                                                                                     onChange={(e) => {
                                                                                         e.stopPropagation();
-                                                                                        setExternalUnitPrice(e.target.value);
+                                                                                        setRejectionReason(e.target.value);
                                                                                     }}
                                                                                     onClick={(e) => e.stopPropagation()}
-                                                                                    className="w-full"
+                                                                                    className="flex-1"
                                                                                 />
+                                                                                <Button 
+                                                                                    onClick={(e) => initiateRejectRequisition(e, req.RequisitionID)}
+                                                                                    className="bg-red-600 hover:bg-red-700"
+                                                                                    disabled={!rejectionReason.trim()}
+                                                                                >
+                                                                                    Reject
+                                                                                </Button>
                                                                             </div>
-                                                                            <div>
-                                                                                <label className="text-sm font-medium mb-1 block">Total Amount</label>
-                                                                                <div className="h-10 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center">
-                                                                                    {externalUnitPrice 
-                                                                                        ? (parseFloat(externalUnitPrice) * parseFloat(req.QuantityRequested || 1)).toLocaleString() 
-                                                                                        : '0'} FCFA
+                                                                        </div>
+                                                                    </Card>
+                                                                )}
+
+                                                                {/* LPO button for usercode 5 and admins when viewing forwarded requisitions */}
+                                                                {req.Status === 'Forwarded' && (user.roleCode === 5 || isAdmin()) && (
+                                                                    <Card className='p-4'>
+                                                                        <h4 className="font-semibold text-sm mb-2">Actions</h4>
+                                                                        <div className="flex flex-col space-y-3">
+                                                                            <div className="grid grid-cols-2 gap-3">
+                                                                                <div>
+                                                                                    <label className="text-sm font-medium mb-1 block">External Unit Price (FCFA)</label>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        placeholder="Enter unit price"
+                                                                                        value={externalUnitPrice || ''}
+                                                                                        onChange={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            setExternalUnitPrice(e.target.value);
+                                                                                        }}
+                                                                                        onClick={(e) => e.stopPropagation()}
+                                                                                        className="w-full"
+                                                                                    />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="text-sm font-medium mb-1 block">Total Amount</label>
+                                                                                    <div className="h-10 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center">
+                                                                                        {externalUnitPrice 
+                                                                                            ? (parseFloat(externalUnitPrice) * parseFloat(req.QuantityRequested || 1)).toLocaleString() 
+                                                                                            : '0'} FCFA
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
+                                                                            
+                                                                            <div>
+                                                                                <label className="text-sm font-medium mb-1 block">Additional Comments</label>
+                                                                                <textarea
+                                                                                    placeholder="Enter any additional information for the LPO"
+                                                                                    value={lpoComments || ''}
+                                                                                    onChange={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setLpoComments(e.target.value);
+                                                                                    }}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                                                                                />
+                                                                            </div>
+                                                                            
+                                                                            <Button 
+                                                                                onClick={(e) => initiateRaiseLPO(e, req.RequisitionID, externalUnitPrice, lpoComments)}
+                                                                                className={`w-full mt-2 ${
+                                                                                    lpoRaised 
+                                                                                        ? "bg-green-600 hover:bg-green-700" 
+                                                                                        : "bg-purple-600 hover:bg-purple-700"
+                                                                                }`}
+                                                                                disabled={!externalUnitPrice || raisingLPO}
+                                                                            >
+                                                                                {raisingLPO ? (
+                                                                                    <>
+                                                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                        </svg>
+                                                                                        Processing...
+                                                                                    </>
+                                                                                ) : lpoRaised ? (
+                                                                                    <>
+                                                                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                                                                        </svg>
+                                                                                        LPO Raised Successfully
+                                                                                    </>
+                                                                                ) : (
+                                                                                    "Raise LPO"
+                                                                                )}
+                                                                            </Button>
                                                                         </div>
-                                                                        
-                                                                        <div>
-                                                                            <label className="text-sm font-medium mb-1 block">Additional Comments</label>
-                                                                            <textarea
-                                                                                placeholder="Enter any additional information for the LPO"
-                                                                                value={lpoComments || ''}
-                                                                                onChange={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setLpoComments(e.target.value);
-                                                                                }}
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                                className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
-                                                                            />
-                                                                        </div>
-                                                                        
-                                                                        <Button 
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleRaiseLPO(req.RequisitionID, externalUnitPrice, lpoComments);
-                                                                            }}
-                                                                            className={`w-full mt-2 ${
-                                                                                lpoRaised 
-                                                                                    ? "bg-green-600 hover:bg-green-700" 
-                                                                                    : "bg-purple-600 hover:bg-purple-700"
-                                                                            }`}
-                                                                            disabled={!externalUnitPrice || raisingLPO}
-                                                                        >
-                                                                            {raisingLPO ? (
-                                                                                <>
-                                                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                                    </svg>
-                                                                                    Processing...
-                                                                                </>
-                                                                            ) : lpoRaised ? (
-                                                                                <>
-                                                                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                                                                    </svg>
-                                                                                    LPO Raised Successfully
-                                                                                </>
-                                                                            ) : (
-                                                                                "Raise LPO"
-                                                                            )}
-                                                                        </Button>
-                                                                    </div>
-                                                                </Card>
-                                                            )}
+                                                                    </Card>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </React.Fragment>
+                            ))
+                        ) : (
+                            // Show empty state
+                            <TableRow>
+                                <TableCell colSpan={8} className="text-center py-8">
+                                    {estateId ? 'No requisitions found. Try changing filters or create a new requisition.' : 'Please select an estate to view requisitions.'}
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                    {totalPages > 1 && (
+                        <TableFooter>
+                            <TableRow>
+                                <TableCell colSpan={8}>
+                                    <Pagination>
+                                        <PaginationContent>
+                                            <PaginationPrevious 
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                            />
+                                            <div className="mx-2">
+                                                Page {currentPage} of {totalPages}
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </React.Fragment>
-                        ))
-                    ) : (
-                        // Show empty state
-                        <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8">
-                                {estateId ? 'No requisitions found. Try changing filters or create a new requisition.' : 'Please select an estate to view requisitions.'}
-                            </TableCell>
-                        </TableRow>
+                                            <PaginationNext 
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage === totalPages}
+                                            />
+                                        </PaginationContent>
+                                    </Pagination>
+                                </TableCell>
+                            </TableRow>
+                        </TableFooter>
                     )}
-                </TableBody>
-                {totalPages > 1 && (
-                    <TableFooter>
-                        <TableRow>
-                            <TableCell colSpan={8}>
-                                <Pagination>
-                                    <PaginationContent>
-                                        <PaginationPrevious 
-                                            onClick={() => handlePageChange(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        />
-                                        <div className="mx-2">
-                                            Page {currentPage} of {totalPages}
-                                        </div>
-                                        <PaginationNext 
-                                            onClick={() => handlePageChange(currentPage + 1)}
-                                            disabled={currentPage === totalPages}
-                                        />
-                                    </PaginationContent>
-                                </Pagination>
-                            </TableCell>
-                        </TableRow>
-                    </TableFooter>
-                )}
-            </Table>
-        </Card>
+                </Table>
+            </Card>
+
+            {/* Confirmation Dialog */}
+            <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{confirmDialogTitle}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {confirmDialogMessage}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowConfirmDialog(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleConfirmedAction}
+                            className={
+                                actionType === 'approve' ? "bg-green-600 hover:bg-green-700" :
+                                actionType === 'forward' ? "bg-blue-600 hover:bg-blue-700" :
+                                actionType === 'reject' ? "bg-red-600 hover:bg-red-700" :
+                                actionType === 'raiseLPO' ? "bg-purple-600 hover:bg-purple-700" :
+                                ""
+                            }
+                        >
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
 
