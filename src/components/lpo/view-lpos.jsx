@@ -673,33 +673,33 @@ function ViewLPOs() {
                                       <div>
                                         <h4 className="font-semibold mb-2">Budget Impact</h4>
                                         <div className="grid grid-cols-2 gap-2 text-sm">
-                                          <div className="font-medium">LPO Amount:</div>
-                                          <div>{formatCurrency(lpoDetails.budgetImpact.lpoAmount)}</div>
+                                          <div className="font-medium">LPO Total Cost Amount:</div>
+                                          <div>{formatCurrency(lpoDetails.lpo.amountRequested)}</div>
                                           
                                           <div className="font-medium">Total Budget:</div>
-                                          <div>{formatCurrency(lpoDetails.budgetImpact.totalBudgetedAmount)}</div>
+                                          <div>{formatCurrency(lpoDetails.lpo.totalBudgetedAmount)}</div>
                                           
                                           <div className="font-medium">Current Month Budget:</div>
                                           <div>{formatCurrency(lpoDetails.budgetImpact.currentMonthBudget)}</div>
                                           
-                                          <div className="font-medium">Impact on Total Budget:</div>
+                                          {/* <div className="font-medium">Impact on Total Budget:</div>
                                           <div>{lpoDetails.budgetImpact.impactOnTotalBudget.toFixed(2)}%</div>
                                           
                                           <div className="font-medium">Impact on Monthly Budget:</div>
                                           <div className={lpoDetails.budgetImpact.impactOnMonthlyBudget > 100 ? "text-red-500 font-bold" : ""}>
                                             {lpoDetails.budgetImpact.impactOnMonthlyBudget.toFixed(2)}%
-                                          </div>
+                                          </div> */}
                                           
-                                          <div className="font-medium">Available Budget:</div>
-                                          <div>{formatCurrency(lpoDetails.budgetImpact.availableBudget)}</div>
+                                          <div className="font-medium">Available Budget for budget line:</div>
+                                          <div>{formatCurrency(lpoDetails.lpo.availableBudget)}</div>
                                           
-                                          <div className="font-medium">Available Monthly Budget:</div>
+                                          {/* <div className="font-medium">Available Monthly Budget:</div>
                                           <div>{formatCurrency(lpoDetails.budgetImpact.availableMonthlyBudget)}</div>
                                           
                                           <div className="font-medium">Projected Monthly Budget:</div>
                                           <div className={lpoDetails.budgetImpact.projectedAvailableMonthlyBudget < 0 ? "text-red-500 font-bold" : ""}>
                                             {formatCurrency(lpoDetails.budgetImpact.projectedAvailableMonthlyBudget)}
-                                          </div>
+                                          </div> */}
                                         </div>
                                       </div>
                                     </div>
@@ -721,7 +721,7 @@ function ViewLPOs() {
                                             <th className="text-right py-2 px-2">Budget Amount (FCFA)</th>
                                             <th className="text-right py-2 px-2">Budgeted Quantity ({lpoDetails.item.measuringUnit.symbol})</th>
                                             <th className="text-right py-2 px-2">Expenditure (FCFA)</th>
-                                            <th className="text-right py-2 px-2">Remaining Budget(FCFA)</th>
+                                            <th className="text-right py-2 px-2">Remaining Budget (FCFA)</th>
                                             <th className="text-right py-2 px-2">Utilization (FCFA %)</th>
                                             {lpoDetails.monthlyData.some(m => m.isCurrentMonth) && (
                                               <th className="text-right py-2 px-2">Projected (FCFA %)</th>
@@ -747,7 +747,7 @@ function ViewLPOs() {
                                                         month.utilizationPercentage > 90 ? "bg-red-500" : 
                                                         month.utilizationPercentage > 70 ? "bg-yellow-500" : "bg-green-500"
                                                       }`}
-                                                      style={{ width: `${Math.min(100, month.utilizationPercentage)}%` }}
+                                                      style={{ width: `${Math.min(100, month.utilization0Percentage)}%` }}
                                                     ></div>
                                                   </div>
                                                   {month.utilizationPercentage.toFixed(1)}%
