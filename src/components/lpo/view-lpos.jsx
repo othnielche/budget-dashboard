@@ -218,6 +218,10 @@ function ViewLPOs() {
     return parseFloat(amount || 0).toLocaleString() + ' FCFA';
   };
 
+  const formatMeasuringUnit = (unit) => {
+    return unit === '1' ? 'Piece' : 'Box';
+  };
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -714,12 +718,13 @@ function ViewLPOs() {
                                         <thead>
                                           <tr className="border-b">
                                             <th className="text-left py-2 px-2">Month</th>
-                                            <th className="text-right py-2 px-2">Budget</th>
-                                            <th className="text-right py-2 px-2">Expenditure</th>
-                                            <th className="text-right py-2 px-2">Remaining</th>
-                                            <th className="text-right py-2 px-2">Utilization</th>
+                                            <th className="text-right py-2 px-2">Budget Amount (FCFA)</th>
+                                            <th className="text-right py-2 px-2">Budgeted Quantity ({lpoDetails.item.measuringUnit.symbol})</th>
+                                            <th className="text-right py-2 px-2">Expenditure (FCFA)</th>
+                                            <th className="text-right py-2 px-2">Remaining Budget(FCFA)</th>
+                                            <th className="text-right py-2 px-2">Utilization (FCFA %)</th>
                                             {lpoDetails.monthlyData.some(m => m.isCurrentMonth) && (
-                                              <th className="text-right py-2 px-2">Projected</th>
+                                              <th className="text-right py-2 px-2">Projected (FCFA %)</th>
                                             )}
                                           </tr>
                                         </thead>
@@ -731,6 +736,7 @@ function ViewLPOs() {
                                                 {month.isCurrentMonth && <span className="ml-1 text-xs bg-yellow-200 dark:bg-yellow-800 px-1 py-0.5 rounded">Current</span>}
                                               </td>
                                               <td className="text-right py-2 px-2">{formatCurrency(month.budgetedAmount)}</td>
+                                              <td className="text-right py-2 px-2">{month.budgetedQuantity} {lpoDetails.item.measuringUnit.symbol}</td>
                                               <td className="text-right py-2 px-2">{formatCurrency(month.totalExpenditureAmount)}</td>
                                               <td className="text-right py-2 px-2">{formatCurrency(month.remainingBudget)}</td>
                                               <td className="text-right py-2 px-2">
@@ -747,24 +753,25 @@ function ViewLPOs() {
                                                   {month.utilizationPercentage.toFixed(1)}%
                                                 </div>
                                               </td>
-                                              {month.isCurrentMonth && (
+                                              {lpoDetails.monthlyData.some(m => m.isCurrentMonth) && (
                                                 <td className="text-right py-2 px-2">
-                                                  <div className="flex items-center justify-end">
-                                                    <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                                      <div 
-                                                        className={`h-2 rounded-full ${
-                                                          month.projectedUtilizationWithCurrentLPO > 100 ? "bg-red-500" : 
-                                                          month.projectedUtilizationWithCurrentLPO > 90 ? "bg-yellow-500" : "bg-green-500"
-                                                        }`}
-                                                        style={{ width: `${Math.min(100, month.projectedUtilizationWithCurrentLPO)}%` }}
-                                                      ></div>
+                                                  {month.isCurrentMonth ? (
+                                                    <div className="flex items-center justify-end">
+                                                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div 
+                                                          className={`h-2 rounded-full ${
+                                                            month.projectedUtilizationWithCurrentLPO > 100 ? "bg-red-500" : 
+                                                            month.projectedUtilizationWithCurrentLPO > 90 ? "bg-yellow-500" : "bg-green-500"
+                                                          }`}
+                                                          style={{ width: `${Math.min(100, month.projectedUtilizationWithCurrentLPO)}%` }}
+                                                        ></div>
+                                                      </div>
+                                                      {month.projectedUtilizationWithCurrentLPO.toFixed(1)}%
                                                     </div>
-                                                    {month.projectedUtilizationWithCurrentLPO.toFixed(1)}%
-                                                  </div>
+                                                  ) : (
+                                                    "-"
+                                                  )}
                                                 </td>
-                                              )}
-                                              {!month.isCurrentMonth && lpoDetails.monthlyData.some(m => m.isCurrentMonth) && (
-                                                <td className="text-right py-2 px-2">-</td>
                                               )}
                                             </tr>
                                           ))}
