@@ -414,8 +414,8 @@ function ViewRequisitions() {
         }
         
         try {
-            await API.post('/requisition/reject-requisition', 
-                { requisitionId, rejectionReason },
+            await API.put(`/requisition/reject/${requisitionId}`, 
+                { rejectionReason },
                 {
                     headers: {
                         Authorization: `Bearer ${user.token}`,
@@ -868,6 +868,36 @@ function ViewRequisitions() {
                                                                     </div>
                                                                 </Card>
                                                                 
+                                                                {/* Requisition Comments - New Section */}
+                                                                {req.Comment && (
+                                                                    <Card className='p-4'>
+                                                                        <h4 className="font-semibold text-sm mb-2">Requisition Comments</h4>
+                                                                        <div className="text-sm bg-muted/30 p-3 rounded-md">
+                                                                            <p className="italic">{req.Comment}</p>
+                                                                        </div>
+                                                                    </Card>
+                                                                )}
+
+                                                                {/* Rejection Reason - New Section */}
+                                                                {req.Status === 'Rejected' && req.RejectionReason && (
+                                                                    <Card className='p-4'>
+                                                                        <h4 className="font-semibold text-sm mb-2 text-red-600">Rejection Reason</h4>
+                                                                        <div className="text-sm bg-red-50 p-3 rounded-md border-l-4 border-red-400">
+                                                                            <p className="text-red-700">{req.RejectionReason}</p>
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                Rejected on: {new Date(req.DataClosed || req.updatedAt).toLocaleString('en-GB', {
+                                                                                    day: '2-digit',
+                                                                                    month: '2-digit',
+                                                                                    year: 'numeric',
+                                                                                    hour: '2-digit',
+                                                                                    minute: '2-digit'
+                                                                                })}
+                                                                            </p>
+                                                                            <p className="text-xs text-gray-500 mt-1">Rejected by: {getUserName(req.ClosedBy)}</p>
+                                                                        </div>
+                                                                    </Card>
+                                                                )}
+
                                                                 {/* Action buttons based on user role and requisition status */}
                                                                 {req.Status === 'Pending' && (canManageRequisitions()) && (
                                                                     <Card className='p-4'>
